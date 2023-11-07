@@ -1,0 +1,5 @@
+../Application/CTRL.c:33:6:CTRL_init	8	static
+../Application/CTRL.c:85:29:_sin	8	static
+../Application/CTRL.c:106:6:inverter	40	static
+../Application/CTRL.c:41:6:CTRL_thread	8	static
+../Application/CTRL.c:154:6:tim1_PWM_PulseFinishedCallback	0	static

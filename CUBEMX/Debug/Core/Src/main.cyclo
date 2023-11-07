@@ -1,0 +1,4 @@
+../Core/Src/main.c:73:5:main	1
+../Core/Src/main.c:134:6:SystemClock_Config	3
+../Core/Src/main.c:190:6:HAL_TIM_PeriodElapsedCallback	3
+../Core/Src/main.c:209:6:Error_Handler	1
