@@ -1,0 +1,4 @@
+../Application/fdcandriver.c:33:8:FDCAN_Start	16	static
+../Application/fdcandriver.c:50:8:FDCAN_addCallback	40	static
+../Application/fdcandriver.c:74:8:FDCAN_sendData	64	static
+../Application/fdcandriver.c:119:6:HAL_FDCAN_RxFifo0Callback	72	static

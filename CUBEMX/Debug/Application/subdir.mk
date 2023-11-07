@@ -5,26 +5,35 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
+../Application/BLDC_CAN.c \
 ../Application/CTRL.c \
 ../Application/FOC.c \
 ../Application/PID.c \
 ../Application/current_ADC.c \
+../Application/example.c \
+../Application/fdcandriver.c \
 ../Application/print_serve.c \
 ../Application/print_server.c 
 
 OBJS += \
+./Application/BLDC_CAN.o \
 ./Application/CTRL.o \
 ./Application/FOC.o \
 ./Application/PID.o \
 ./Application/current_ADC.o \
+./Application/example.o \
+./Application/fdcandriver.o \
 ./Application/print_serve.o \
 ./Application/print_server.o 
 
 C_DEPS += \
+./Application/BLDC_CAN.d \
 ./Application/CTRL.d \
 ./Application/FOC.d \
 ./Application/PID.d \
 ./Application/current_ADC.d \
+./Application/example.d \
+./Application/fdcandriver.d \
 ./Application/print_serve.d \
 ./Application/print_server.d 
 
@@ -36,7 +45,7 @@ Application/%.o Application/%.su Application/%.cyclo: ../Application/%.c Applica
 clean: clean-Application
 
 clean-Application:
-	-$(RM) ./Application/CTRL.cyclo ./Application/CTRL.d ./Application/CTRL.o ./Application/CTRL.su ./Application/FOC.cyclo ./Application/FOC.d ./Application/FOC.o ./Application/FOC.su ./Application/PID.cyclo ./Application/PID.d ./Application/PID.o ./Application/PID.su ./Application/current_ADC.cyclo ./Application/current_ADC.d ./Application/current_ADC.o ./Application/current_ADC.su ./Application/print_serve.cyclo ./Application/print_serve.d ./Application/print_serve.o ./Application/print_serve.su ./Application/print_server.cyclo ./Application/print_server.d ./Application/print_server.o ./Application/print_server.su
+	-$(RM) ./Application/BLDC_CAN.cyclo ./Application/BLDC_CAN.d ./Application/BLDC_CAN.o ./Application/BLDC_CAN.su ./Application/CTRL.cyclo ./Application/CTRL.d ./Application/CTRL.o ./Application/CTRL.su ./Application/FOC.cyclo ./Application/FOC.d ./Application/FOC.o ./Application/FOC.su ./Application/PID.cyclo ./Application/PID.d ./Application/PID.o ./Application/PID.su ./Application/current_ADC.cyclo ./Application/current_ADC.d ./Application/current_ADC.o ./Application/current_ADC.su ./Application/example.cyclo ./Application/example.d ./Application/example.o ./Application/example.su ./Application/fdcandriver.cyclo ./Application/fdcandriver.d ./Application/fdcandriver.o ./Application/fdcandriver.su ./Application/print_serve.cyclo ./Application/print_serve.d ./Application/print_serve.o ./Application/print_serve.su ./Application/print_server.cyclo ./Application/print_server.d ./Application/print_server.o ./Application/print_server.su
 
 .PHONY: clean-Application
 

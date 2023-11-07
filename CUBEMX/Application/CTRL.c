@@ -135,6 +135,18 @@ void shutoff(void){
 	TIM1->CCR3 = 0;
 
 }
+void shutdown(void){
+	HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1); //error
+	HAL_TIMEx_PWMN_Stop(&htim1, TIM_CHANNEL_1); //error
+
+	HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_2); //error
+	HAL_TIMEx_PWMN_Stop(&htim1, TIM_CHANNEL_2); //error
+
+	HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_3); //error
+	HAL_TIMEx_PWMN_Stop(&htim1, TIM_CHANNEL_3); //error
+
+	HAL_TIM_Base_Stop(&htim1);
+}
 void tim1_PWM_PulseFinishedCallback(void){
 	//osThreadFlagsSet(CTRL_thread_id, update_flag);
 }

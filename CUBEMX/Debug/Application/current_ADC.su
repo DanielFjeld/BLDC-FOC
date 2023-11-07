@@ -1,5 +1,6 @@
-../Application/current_ADC.c:70:6:current_init	8	static
-../Application/current_ADC.c:78:10:frequenzy	16	static
-../Application/current_ADC.c:84:6:current_thread	40	static
-../Application/current_ADC.c:227:6:HAL_ADC_ConvHalfCpltCallback	16	static
-../Application/current_ADC.c:235:6:ADC1_ConvCpltCallback	16	static
+../Application/current_ADC.c:71:6:current_init	8	static
+../Application/current_ADC.c:79:10:frequenzy	16	static
+../Application/current_ADC.c:88:6:test	16	static
+../Application/current_ADC.c:92:6:current_thread	64	static
+../Application/current_ADC.c:277:6:HAL_ADC_ConvHalfCpltCallback	16	static
+../Application/current_ADC.c:285:6:ADC1_ConvCpltCallback	16	static
