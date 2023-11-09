@@ -75,6 +75,6 @@ STATUS FDCAN_addCallback(FDCAN_HandleTypeDef *hfdcan, uint32_t identifier, FDCAN
  * @param TxData the data to send
  * @return
  */
-STATUS FDCAN_sendData(FDCAN_HandleTypeDef *hfdcan, uint32_t identifier, uint8_t TxData[8]);
+STATUS FDCAN_sendData(FDCAN_HandleTypeDef *hfdcan, uint32_t identifier, uint8_t TxData[64]);
 
 #endif // __FDCANDRIVER_H__

@@ -24,7 +24,6 @@ typedef struct FDCANCallback_internal_s {
 
 static FDCANCallback_internal_t FDCAN_listCallbacks[FDCAN_MAX_CALLBACKS];
 static uint32_t FDCAN_listCallbacksCount;
-static FDCAN_TxHeaderTypeDef TxHeader;
 
 /*****************************************************************************/
 /** Public API                                                              **/
@@ -71,7 +70,7 @@ STATUS FDCAN_addCallback(FDCAN_HandleTypeDef *hfdcan, uint32_t identifier, FDCAN
   return FDCAN_STATUS_OK;
 }
 
-STATUS FDCAN_sendData(FDCAN_HandleTypeDef *hfdcan, uint32_t identifier, uint8_t TxData[8])
+STATUS FDCAN_sendData(FDCAN_HandleTypeDef *hfdcan, uint32_t identifier, uint8_t TxData[64])
 {
   FDCAN_TxHeaderTypeDef TxHeader;
 
@@ -79,7 +78,7 @@ STATUS FDCAN_sendData(FDCAN_HandleTypeDef *hfdcan, uint32_t identifier, uint8_t 
   TxHeader.Identifier = identifier;
 
   /* Set the data length to send */
-  TxHeader.DataLength = FDCAN_DLC_BYTES_8;
+  TxHeader.DataLength = FDCAN_DLC_BYTES_64;
 
   /* Set the identifier type to send */
   TxHeader.IdType = FDCAN_STANDARD_ID;
@@ -91,10 +90,10 @@ STATUS FDCAN_sendData(FDCAN_HandleTypeDef *hfdcan, uint32_t identifier, uint8_t 
   TxHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
 
   /* Set the bit rate switch to send */
-  TxHeader.BitRateSwitch = FDCAN_BRS_OFF;
+  TxHeader.BitRateSwitch = FDCAN_BRS_ON;
 
   /* Set the FD format to send */
-  TxHeader.FDFormat = FDCAN_CLASSIC_CAN;
+  TxHeader.FDFormat = FDCAN_FD_CAN;
 
   /* Set the Tx event FIFO control to send */
   TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
@@ -119,7 +118,7 @@ STATUS FDCAN_sendData(FDCAN_HandleTypeDef *hfdcan, uint32_t identifier, uint8_t 
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 {
   FDCAN_RxHeaderTypeDef RxHeader;
-  uint8_t RxData[8];
+  uint8_t RxData[64];
 
   /* Fetch the CAN message from the FIFO buffer*/
   if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &RxHeader, RxData) != HAL_OK)

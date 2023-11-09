@@ -1,7 +1,6 @@
-../Application/CTRL.c:32:6:CTRL_init	1
-../Application/CTRL.c:40:6:CTRL_init_PWM	7
-../Application/CTRL.c:79:7:_sin	1
-../Application/CTRL.c:83:6:inverter	12
-../Application/CTRL.c:132:6:shutoff	1
-../Application/CTRL.c:138:6:shutdown	1
-../Application/CTRL.c:150:6:tim1_PWM_PulseFinishedCallback	1
+../Application/CTRL.c:28:6:CTRL_init	1
+../Application/CTRL.c:36:6:CTRL_init_PWM	7
+../Application/CTRL.c:58:6:inverter	12
+../Application/CTRL.c:107:6:shutoff	1
+../Application/CTRL.c:113:6:shutdown	1
+../Application/CTRL.c:125:6:tim1_PWM_PulseFinishedCallback	1

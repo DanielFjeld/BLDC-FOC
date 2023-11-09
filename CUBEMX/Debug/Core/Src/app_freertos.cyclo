@@ -1,7 +1,0 @@
-../Core/Src/app_freertos.c:73:6:vApplicationIdleHook	1
-../Core/Src/app_freertos.c:88:6:vApplicationTickHook	1
-../Core/Src/app_freertos.c:99:6:vApplicationStackOverflowHook	1
-../Core/Src/app_freertos.c:108:13:PreSleepProcessing	1
-../Core/Src/app_freertos.c:113:13:PostSleepProcessing	1
-../Core/Src/app_freertos.c:124:6:MX_FREERTOS_Init	1
-../Core/Src/app_freertos.c:167:6:StartDefaultTask	1

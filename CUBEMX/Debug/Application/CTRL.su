@@ -1,7 +1,6 @@
-../Application/CTRL.c:32:6:CTRL_init	4	static
-../Application/CTRL.c:40:6:CTRL_init_PWM	16	static
-../Application/CTRL.c:79:7:_sin	16	static
-../Application/CTRL.c:83:6:inverter	40	static
-../Application/CTRL.c:132:6:shutoff	4	static
-../Application/CTRL.c:138:6:shutdown	8	static
-../Application/CTRL.c:150:6:tim1_PWM_PulseFinishedCallback	4	static
+../Application/CTRL.c:28:6:CTRL_init	4	static
+../Application/CTRL.c:36:6:CTRL_init_PWM	8	static
+../Application/CTRL.c:58:6:inverter	40	static
+../Application/CTRL.c:107:6:shutoff	4	static
+../Application/CTRL.c:113:6:shutdown	8	static
+../Application/CTRL.c:125:6:tim1_PWM_PulseFinishedCallback	4	static

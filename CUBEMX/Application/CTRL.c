@@ -10,16 +10,12 @@
 #include "CTRL.h"
 #include "tim.h"
 #include "dma.h"
-#include "cmsis_os2.h"
+//#include "cmsis_os2.h"
 
-#include "print_serve.h"
 
 
 //thread setup
 void CTRL_thread(void);
-osThreadId_t CTRL_thread_id;
-osThreadAttr_t CTRL_attr;
-
 //PWM setup
 void inverter(uint16_t angle, uint16_t duty);
 #define duty_max 1499
@@ -52,33 +48,12 @@ void CTRL_init_PWM(void){
 	TIM1->CCR3 = 0;
 
 	HAL_TIM_Base_Start_IT(&htim3);
-
-	uint16_t setpoint = 0;
-
-//	while(1){
-//
-//		osThreadFlagsWait (update_flag, osFlagsWaitAny, osWaitForever);
-//		HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 1);
-////		HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 1);
-//
-//		setpoint += 1;
-//		if(setpoint > 360)setpoint -= 360;
-////		inverter(setpoint, 1000); //1499 is max voltage
-////		HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 0);
-//		HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 0);
-//		HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 1);
-//		//inverter(setpoint, 1000); //1499 is max voltage
-//		HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 0);
-////		osDelay(1000);
-////		inverter(90, 1000); //1499 is max voltage
-////		osDelay(1000);
-//	}
 }
 
 //sin(θ◦) ≈ 4θ(180 − θ) 40500 − θ(180 − θ);
-float _sin(float deg){
-	return (4*deg*(180-deg)/(40500 - deg*(180-deg)));
-}
+//float _sin(float deg){
+//	return (4*deg*(180-deg)/(40500 - deg*(180-deg)));
+//}
 
 void inverter(uint16_t angle, uint16_t voltage){
 

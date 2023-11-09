@@ -1,0 +1,7 @@
+../Application/BLDC_FOC.c:102:6:Current_IRQ	2
+../Application/BLDC_FOC.c:108:6:Voltage_Temp_IRQ	1
+../Application/BLDC_FOC.c:111:6:Encoders_IRQ	1
+../Application/BLDC_FOC.c:116:6:Can_RX_Status_IRQ	1
+../Application/BLDC_FOC.c:204:10:check_value	5
+../Application/BLDC_FOC.c:209:7:Limit	3
+../Application/BLDC_FOC.c:216:6:BLDC_main	6

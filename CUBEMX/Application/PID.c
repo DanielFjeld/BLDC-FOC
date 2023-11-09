@@ -8,8 +8,8 @@ void Compute(PID_instance *val)
 {
 	if(!val->inAuto) return;
 	/*Compute all the working error variables*/
-	double error = val->Setpoint - val->Input;
-	double dInput = (val->Input - val->lastInput);
+	float error = val->Setpoint - val->Input;
+	float dInput = (val->Input - val->lastInput);
 	val->outputSum+= (val->ki * error);
 
 	/*Add Proportional on Measurement, if P_ON_M is specified*/
@@ -32,14 +32,14 @@ void Compute(PID_instance *val)
 	val->lastInput = val->Input;
 }
 
-void SetTunings(PID_instance *val, double Kp, double Ki, double Kd, double pOn)
+void SetTunings(PID_instance *val, float Kp, float Ki, float Kd, float pOn)
 {
    if (Kp<0 || Ki<0|| Kd<0 || pOn<0 || pOn>1) return;
 
    val->pOnE = pOn>0; //some p on error is desired;
    val->pOnM = pOn<1; //some p on measurement is desired;
 
-   double SampleTimeInSec = ((double)val->SampleTime)/1000000;
+   float SampleTimeInSec = ((float)val->SampleTime)/1000000;
    val->kp = Kp;
    val->ki = Ki * SampleTimeInSec;
    val->kd = Kd / SampleTimeInSec;
@@ -59,15 +59,15 @@ void SetSampleTime(PID_instance *val, int NewSampleTime)
 {
    if (NewSampleTime > 0)
    {
-      double ratio  = (double)NewSampleTime
-                      / (double)val->SampleTime;
+      float ratio  = (float)NewSampleTime
+                      / (float)val->SampleTime;
       val->ki *= ratio;
       val->kd /= ratio;
       val->SampleTime = (unsigned long)NewSampleTime;
    }
 }
 
-void SetOutputLimits(PID_instance *val, double Min, double Max)
+void SetOutputLimits(PID_instance *val, float Min, float Max)
 {
    if(Min > Max) return;
    val->outMin = Min;

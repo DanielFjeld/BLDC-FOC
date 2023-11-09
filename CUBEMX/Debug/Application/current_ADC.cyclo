@@ -1,6 +1,4 @@
-../Application/current_ADC.c:71:6:current_init	1
-../Application/current_ADC.c:79:10:frequenzy	2
-../Application/current_ADC.c:88:6:test	1
-../Application/current_ADC.c:92:6:current_thread	20
-../Application/current_ADC.c:277:6:HAL_ADC_ConvHalfCpltCallback	1
-../Application/current_ADC.c:285:6:ADC1_ConvCpltCallback	1
+../Application/current_ADC.c:35:9:ADC_CAL_init	25
+../Application/current_ADC.c:135:6:current_init	1
+../Application/current_ADC.c:143:6:HAL_ADC_ConvHalfCpltCallback	1
+../Application/current_ADC.c:151:6:ADC1_ConvCpltCallback	1

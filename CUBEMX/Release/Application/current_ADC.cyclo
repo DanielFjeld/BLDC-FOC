@@ -1,3 +1,0 @@
-../Application/current_ADC.c:45:6:current_thread	3
-../Application/current_ADC.c:37:6:current_init	1
-../Application/current_ADC.c:95:6:ADC1_ConvCpltCallback	2
