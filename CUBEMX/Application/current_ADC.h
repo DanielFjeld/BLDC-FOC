@@ -14,9 +14,17 @@
 			int32_t Current_DC;
 	}Current;
 
+	typedef struct Voltage_Temp{
+		uint32_t V_Bat;
+		uint16_t V_aux;
+		int8_t Temp_NTC1;
+		int8_t Temp_NTC2;
+	}Voltage_Temp;
+
 	typedef void (*Current_Callback) (Current* data);
+	typedef void (*VT_Callback) (Voltage_Temp* data);
 
 	void current_init(Current_Callback __IRQ_callback);
-	void ADC1_ConvCpltCallback(ADC_HandleTypeDef *hadc);
+	void voltage_temperature_init(VT_Callback __IRQ_callback);
 
 #endif /* CURRENT_ADC_H_ */

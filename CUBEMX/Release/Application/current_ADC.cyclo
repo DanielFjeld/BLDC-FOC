@@ -1,0 +1,5 @@
+../Application/current_ADC.c:43:9:ADC_CAL_init	24
+../Application/current_ADC.c:143:6:current_init	1
+../Application/current_ADC.c:150:6:voltage_temperature_init	1
+../Application/current_ADC.c:156:6:HAL_ADC_ConvHalfCpltCallback	3
+../Application/current_ADC.c:173:6:HAL_ADC_ConvCpltCallback	3

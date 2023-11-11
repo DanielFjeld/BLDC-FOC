@@ -1,7 +1,6 @@
-"./Application/BLDC_CAN.o"
 "./Application/BLDC_FOC.o"
 "./Application/CTRL.o"
-"./Application/FOC.o"
+"./Application/Encoders_SPI.o"
 "./Application/PID.o"
 "./Application/current_ADC.o"
 "./Application/example.o"

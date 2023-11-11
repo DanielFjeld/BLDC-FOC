@@ -30,18 +30,6 @@
 
 	//-----------------------------------------------------
 
-	typedef struct Voltage_Temp{
-		uint32_t V_Bat;
-		uint16_t V_aux;
-		int8_t Temp_NTC1;
-		int8_t Temp_NTC2;
-	}Voltage_Temp;
-	typedef struct Encoders{
-		uint32_t Encoder1_pos; 	//0 to 360 000
-		uint32_t Encoder2_pos; 	//0 to 360 000
-		int32_t Calculated_pos; //-2,147,483,648 to 2,147,483,647 	//DEG/1000
-		int32_t Velocity; 		//-2,147,483,648 to 2,147,483,647 	//RPM/100
-	}Encoders;
 	typedef struct CAN_Feedback{ //60Byte data, 4Byte reserved
 		uint32_t Status_mode;
 		uint32_t Status_warning;

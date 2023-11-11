@@ -1,6 +1,8 @@
 "./Application/BLDC_FOC.o"
 "./Application/CTRL.o"
+"./Application/Encoders_SPI.o"
 "./Application/PID.o"
+"./Application/Print_server.o"
 "./Application/current_ADC.o"
 "./Application/example.o"
 "./Application/fdcandriver.o"

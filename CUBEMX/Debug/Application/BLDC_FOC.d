@@ -39,7 +39,8 @@ Application/BLDC_FOC.o: ../Application/BLDC_FOC.c ../Core/Inc/main.h \
  ../Core/Inc/tim.h ../Core/Inc/main.h ../Core/Inc/dma.h ../Core/Inc/dac.h \
  ../Application/BLDC_FOC.h ../Application/CTRL.h ../Application/PID.h \
  ../Application/CURRENT_adc.h ../Application/fdcandriver.h \
- ../Core/Inc/fdcan.h
+ ../Core/Inc/fdcan.h ../Application/Encoders_SPI.h \
+ ../Application/print_server.h
 ../Core/Inc/main.h:
 C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal.h:
 ../Core/Inc/stm32g4xx_hal_conf.h:
@@ -88,3 +89,5 @@ C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HA
 ../Application/CURRENT_adc.h:
 ../Application/fdcandriver.h:
 ../Core/Inc/fdcan.h:
+../Application/Encoders_SPI.h:
+../Application/print_server.h:
