@@ -26,5 +26,6 @@
 
 	void current_init(Current_Callback __IRQ_callback);
 	void voltage_temperature_init(VT_Callback __IRQ_callback);
+	void dac_value(uint16_t V_dac);
 
 #endif /* CURRENT_ADC_H_ */

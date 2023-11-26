@@ -1,7 +1,9 @@
-../Application/BLDC_FOC.c:117:6:Current_IRQ	2
-../Application/BLDC_FOC.c:130:6:Voltage_Temp_IRQ	1
-../Application/BLDC_FOC.c:133:6:Encoders_IRQ	1
-../Application/BLDC_FOC.c:138:6:Can_RX_Status_IRQ	1
-../Application/BLDC_FOC.c:226:10:check_value	5
-../Application/BLDC_FOC.c:231:7:Limit	3
-../Application/BLDC_FOC.c:238:6:BLDC_main	7
+../Application/BLDC_FOC.c:113:7:Update_FIR_filter	3
+../Application/BLDC_FOC.c:139:6:Current_IRQ	2
+../Application/BLDC_FOC.c:152:6:Voltage_Temp_IRQ	1
+../Application/BLDC_FOC.c:155:6:Encoders_IRQ	1
+../Application/BLDC_FOC.c:160:6:Can_RX_Status_IRQ	1
+../Application/BLDC_FOC.c:248:10:check_value	5
+../Application/BLDC_FOC.c:253:7:Limit	3
+../Application/BLDC_FOC.c:260:6:BLDC_main	23
+../Application/BLDC_FOC.c:562:7:fast_sin_2	1

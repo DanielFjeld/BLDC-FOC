@@ -22,6 +22,7 @@
 #include "dac.h"
 #include "dma.h"
 #include "fdcan.h"
+#include "fmac.h"
 #include "spi.h"
 #include "tim.h"
 #include "usart.h"
@@ -102,6 +103,7 @@ int main(void)
   MX_DAC1_Init();
   MX_USART1_UART_Init();
   MX_TIM3_Init();
+  MX_FMAC_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */

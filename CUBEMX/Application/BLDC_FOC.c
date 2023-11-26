@@ -7,12 +7,11 @@
 /*TODO:
  * Make driver for encoders (velocity and position)
  * encoder calibration (finds magnetic 0 DEG and create offset for encoder)(can be done manually)
- *
  * OK---->Read voltage and temperature (in Current.c)
- *
  * OK---->use buffer after callback to store all values that get changed in IRQ
- *
  * create IIR or FIR filter with built in STM hardware
+ * stop if no data or move to another position?
+ * Use DAC to measure current
  *
  * ---------TEST-------------
  * Test CAN messages
@@ -23,8 +22,9 @@
  * Test Velocity
  * Test voltage
  * Test temperature
+ *
  * Test Heat generation @ 50A
- * Test slack and repeatability
+ * Test slack and repeatability (while driving motor)
  * Test Torque
  *
  *
@@ -46,9 +46,9 @@
  *
  * ---------CAN STATUS--------
  * encoder calibration
- * reset faults
- * RUN
- * STOP
+ * OK---->reset faults
+ * OK---->RUN
+ * OK---->STOP
  *
  * ---------CAN test rig------
  * write to status register (buttons, Potentiometer and UART)
@@ -56,9 +56,10 @@
  * 		button to enable run (stop when released)
  * 		button to start calibration (single message) only need to run one time (can store it in memory) encoder 1 and 2
  *
- * print feedback on UART (use plotting program)(Arduino?) 200hz
+ *print feedback on UART (use plotting program)(Arduino?) 200hz
+ *
+ *Zero gravity test
  */
-
 
 #include "main.h"
 #include "math.h"
@@ -78,14 +79,20 @@
 #define LOOP_FREQ_KHZ 30
 
 //#define RUNNING_LED_DEBUG
-//#define RUNNING_LED_DEBUG2
+#define RUNNING_LED_DEBUG2
 #define PRINT_DEBUG
 
 #define Current_debug
-#define Voltage_debug
+//#define Voltage_debug
 //#define Temperature_debug
-#define Status_debug
+//#define Status_debug
 //#define Position_debug
+
+#define DAC_DEBUG
+
+#define ZERO_GRAVITY
+float weight = 100;
+float fast_sin_2(float deg);
 
 //-------------------MISC-----------------
 uint8_t Current_Callback_flag = 0;
@@ -98,6 +105,21 @@ Current IRQ_Current = {0};
 Voltage_Temp IRQ_Voltage_Temp = {0};
 Encoders IRQ_Encoders = {0};
 
+//----------------------FIR-------------------
+#define FIR_FILTER_LENGTH 10
+static float FIR_INPULSE_RESPONSE[FIR_FILTER_LENGTH] = {0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f};
+uint8_t FIR_index = 0;
+float FIR_Values[FIR_FILTER_LENGTH] = {0};
+float Update_FIR_filter(float input){
+	FIR_Values[FIR_index] = input;
+	float temp;
+	for(int i = 0; i < FIR_FILTER_LENGTH; i++){
+		temp += FIR_INPULSE_RESPONSE[i]*FIR_Values[i];
+	}
+	if(FIR_index < FIR_FILTER_LENGTH-1)FIR_index++;
+	else FIR_index = 0;
+	return temp;
+}
 
 //----------------------CAN--------------------
 CAN_Status IRQ_Status;
@@ -202,7 +224,7 @@ CAN_LIMITS LIMIT_V_motor = {
 	.min_error = NAN,
 	.max_warning = NAN,
 	.min_warning = NAN,
-	.max = 10,
+	.max = 1499,
 	.min = 0
 };
 CAN_LIMITS LIMIT_Current = {
@@ -238,8 +260,9 @@ float Limit(CAN_LIMITS* ptr, float value){
 void BLDC_main(void){
 	//----------------PID---------
 	SetSampleTime(&Current_PID, 40); //40us = 25kHz
-	SetTunings(&Current_PID, 0.005f, 10.0f, 0.0f, 1);
-	SetOutputLimits(&Current_PID, 0, 10);
+//	SetTunings(&Current_PID, 0.005f, 10.0f, 0.0f, 1); //alva
+	SetTunings(&Current_PID, 0.005f, 40.0f, 0.0f, 1); //gimbal
+	SetOutputLimits(&Current_PID, 0, 1499);
 	SetControllerDirection(&Current_PID, DIRECT);
 	SetMode(&Current_PID,  AUTOMATIC);
 	Initialize(&Current_PID);
@@ -264,7 +287,23 @@ void BLDC_main(void){
 
 	//setup current
 	current_init((void*)&Current_IRQ);
+
+	//calibrate DC current offset
+	HAL_Delay(100); //let thing settle before starting
+
+	uint16_t current_offset_averaging = 100;
+	volatile int32_t current_offset = 0;
+	while (current_offset_averaging){
+		while(!Current_Callback_flag);
+		Current_Callback_flag = 0;
+		current_offset += IRQ_Current.Current_DC;
+		current_offset_averaging--;
+	}
+	current_offset = current_offset/100;
+
+	//setup voltage and temperature readings
 	voltage_temperature_init((void*)&Voltage_Temp_IRQ);
+
 
 	//setup temperature and voltage
 	//temp_volt_init((void*)&Voltage_Temp_IRQ);
@@ -289,6 +328,9 @@ void BLDC_main(void){
 	Voltage_Temp IRQ_Voltage_Temp_BUFF = {0};
 	Encoders IRQ_Encoders_BUFF = {0};
 	CAN_Status  IRQ_STATUS_BUFF = {0};
+
+
+	BLDC_STATUS_Feedback Status = BLDC_STOPPED_WITH_BREAK;
 	while(1){
 		#ifdef RUNNING_LED_DEBUG2
 		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 0);
@@ -296,14 +338,26 @@ void BLDC_main(void){
 		//check if flag has been set indicating new current measurements
 		while(!Current_Callback_flag);
 
-
-
 		Current_Callback_flag = 0;
 
 		memcpy(&IRQ_Current_BUFF, &IRQ_Current, sizeof(Current));
 		memcpy(&IRQ_Voltage_Temp_BUFF, &IRQ_Voltage_Temp, sizeof(Voltage_Temp));
 		memcpy(&IRQ_Encoders_BUFF, &IRQ_Encoders, sizeof(Encoders));
 		memcpy(&IRQ_STATUS_BUFF, &IRQ_Status, sizeof(CAN_Status));
+		IRQ_Current_BUFF.Current_DC -= current_offset;
+
+		//start calibration
+		if(Status == BLDC_STOPPED_WITH_BREAK && IRQ_STATUS_BUFF.status == INPUT_CALIBRATE_ENCODER)Status = BLDC_CALIBRATING_ENCODER;
+
+		//reset errors
+		else if(Status == BLDC_STOPPED_WITH_BREAK && IRQ_STATUS_BUFF.status == INPUT_RESET_ERRORS)error = 0;
+
+		//start motor when not running
+		else if(Status == BLDC_STOPPED_WITH_BREAK && IRQ_STATUS_BUFF.status == INPUT_START)Status = BLDC_RUNNING;
+
+		//stop motor when running
+		else if(Status == BLDC_RUNNING && IRQ_STATUS_BUFF.status == INPUT_STOP_WITH_BREAK)Status = BLDC_STOPPED_WITH_BREAK;
+		else if(Status == BLDC_RUNNING && IRQ_STATUS_BUFF.status == INPUT_STOP_AND_SHUTDOWN)Status = BLDC_STOPPED_AND_SHUTDOWN;
 
 		//time keepers
 		timing_CAN_feedback++;
@@ -311,8 +365,6 @@ void BLDC_main(void){
 
 		//reset warnings
 		uint32_t warning = 0;
-
-
 
 		//-------------------check warning and error--------------------------- 6us
 		#ifdef RUNNING_LED_DEBUG
@@ -354,6 +406,8 @@ void BLDC_main(void){
 		warning |= (Limit_callback&1)      << 7; //warning
 		error   |= ((Limit_callback&2)>>1) << 7; //error
 
+		//-------------------RUN FIR FILTER---------------------
+		float test = Update_FIR_filter((float)(IRQ_Current_BUFF.Current_DC));
 
 		//------------------calculate PID----------------------- 6.52us
 		#ifdef RUNNING_LED_DEBUG
@@ -363,7 +417,7 @@ void BLDC_main(void){
 
 		Angle_PID.Input = (float)IRQ_Encoders_BUFF.Calculated_pos;
 		Velocity_PID.Input = (float)IRQ_Encoders_BUFF.Velocity;
-		Current_PID.Input = (float)IRQ_Current_BUFF.Current_DC;
+		Current_PID.Input = test;
 
 		Angle_PID.Setpoint = Limit(&LIMIT_Encoder_2, IRQ_STATUS_BUFF.setpoint);
 		Compute(&Angle_PID);
@@ -371,7 +425,16 @@ void BLDC_main(void){
 		Velocity_PID.Setpoint =  Limit(&LIMIT_Velocity, Angle_PID.Output);
 		Compute(&Velocity_PID);
 
-		Current_PID.Setpoint = Limit(&LIMIT_Current, Velocity_PID.Output);
+		int8_t direction;
+		#ifndef ZERO_GRAVITY
+		if(IRQ_Voltage_Temp_BUFF.V_Bat > 10000)Current_PID.Setpoint = 1000; //Limit(&LIMIT_Current, Velocity_PID.Output);
+		else Current_PID.Setpoint = -10;
+		#else
+		Current_PID.Setpoint = weight*(fast_sin_2((abs)((float)IRQ_Encoders_BUFF.Encoder1_pos)/1000));
+		if(IRQ_Encoders_BUFF.Encoder1_pos > 180000) direction = -1;
+		else direction = 1;
+		#endif
+
 		Compute(&Current_PID);
 
 		//-----------------set PWM--------------------- 3.12us
@@ -381,13 +444,24 @@ void BLDC_main(void){
 		#endif
 
 		if(error){
+			Status = BLDC_STOPPED_WITH_BREAK;
+			shutoff();
+		}
+		else if (Status == BLDC_STOPPED_AND_SHUTDOWN){
 			shutoff();
 			shutdown();
 		}
-		else{
-			inverter((IRQ_Encoders_BUFF.Encoder1_pos+90000)/1000, (uint16_t)Limit(&LIMIT_V_motor, Velocity_PID.Output));
+		else if (Status == BLDC_STOPPED_WITH_BREAK){
+			//shutoff();
+			inverter(0, (uint16_t)Limit(&LIMIT_V_motor, Current_PID.Output));
 		}
-
+		else if (Status == BLDC_RUNNING){
+			inverter((((((int32_t)((int32_t)IRQ_Encoders_BUFF.Encoder1_pos)-offset)%deg_pr_pole)*360)/deg_pr_pole+(direction*90)), (uint16_t)Limit(&LIMIT_V_motor, Current_PID.Output));
+		}
+		else if (Status == BLDC_CALIBRATING_ENCODER){
+			//inverter(0, (uint16_t)Limit(&LIMIT_V_motor, Velocity_PID.Output));
+			Status = BLDC_STOPPED_WITH_BREAK;
+		}
 
 		//--------------send can message------------------ 1us
 		#ifdef RUNNING_LED_DEBUG
@@ -400,7 +474,7 @@ void BLDC_main(void){
 			Feedback.Status_warning = warning;
 			Feedback.Status_faults = error;
 			Feedback.Status_setpoint = IRQ_STATUS_BUFF.setpoint;
-			Feedback.Status_mode = IRQ_STATUS_BUFF.status;
+			Feedback.Status_mode = Status;
 
 			Feedback.Current_DC = IRQ_Current_BUFF.Current_DC;
 			Feedback.Current_M1 = IRQ_Current_BUFF.Current_M1;
@@ -421,9 +495,9 @@ void BLDC_main(void){
 			//-----------------PRINTF DEBUGGING-------------------
 			//will print same info as on CAN-BUS
 			#ifdef PRINT_DEBUG
-			PrintServerPrintf( "UART DEBUG:"
+			PrintServerPrintf(
 					#ifdef Current_debug
-					"CURRENT[M1:%7d M2:%7d M3:%7d DC:%7d] "
+					"CURRENT[M1:%7d M2:%7d M3:%7d DC:%7d DC(FIR):%7d] "
 					#endif
 					#ifdef Voltage_debug
 					"VOLTAGE[Vbat:%5d Vaux:%5d]  "
@@ -432,14 +506,14 @@ void BLDC_main(void){
 					"TEMPERATURE[NTC1:%5d NTC2:%5d]  "
 					#endif
 					#ifdef Status_debug
-					"STATUS[MODE:%2d SP:%2d WARN:0x%02x ERROR:0x%02x]"
+					"STATUS[MODE:%s SP:%2d WARN:0x%02x ERROR:0x%02x]"
 					#endif
 					#ifdef Position_debug
 					"POSITION[EN1:%7d EN2:%7d CALC:%7d VELOCITY:%7d]"
 					#endif
 					"\r\n"
 					#ifdef Current_debug
-					, Feedback.Current_M1,  Feedback.Current_M2, Feedback.Current_M3, Feedback.Current_DC
+					, Feedback.Current_M1,  Feedback.Current_M2, Feedback.Current_M3, Feedback.Current_DC, (int32_t)test
 					#endif
 					#ifdef Voltage_debug
 					, Feedback.Voltage_BAT, Feedback.Voltage_AUX
@@ -448,12 +522,12 @@ void BLDC_main(void){
 					, Feedback.Temp_NTC1, Feedback.Temp_NTC2
 					#endif
 					#ifdef Status_debug
-					, Feedback.Status_mode, Feedback.Status_setpoint, Feedback.Status_warning, Feedback.Status_faults
+					, status_sting[Feedback.Status_mode], Feedback.Status_setpoint, Feedback.Status_warning, Feedback.Status_faults
 						#endif
 					#ifdef Position_debug
 					, Feedback.Position_Encoder1_pos, Feedback.Position_Encoder2_pos, Feedback.Position_Calculated_pos, Feedback.Position_Velocity
 					#endif
-					); //\r only goes back not to next line!
+					); // \r only goes back not to next line!
 			#endif
 		}
 
@@ -477,9 +551,16 @@ void BLDC_main(void){
 		#endif
 		#endif
 
-
-
+		//-----------------update dac---------------------------
+		#ifdef DAC_DEBUG
+		dac_value(Current_PID.Output);
+		#endif
 	}
+}
+
+
+float fast_sin_2(float deg){
+	return (4*deg*(180-deg)/(40500 - deg*(180-deg)));
 }
 
 

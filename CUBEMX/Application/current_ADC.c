@@ -10,6 +10,8 @@
 #include "adc.h"
 #include "dma.h"
 
+#include "dac.h"
+
 //ADC setup
 #define ADC_RES 4095 //times two
 #define number_of_calibration_points 1000
@@ -128,15 +130,23 @@ int32_t ADC_CAL_init(ADC_HandleTypeDef *hadc){
 		Voltage_offset_temp[0] += (int32_t)((M1_raw/number_of_oversample*VDDA)/4095)*153/100; //*153/100
 		Voltage_offset_temp[1] += (int32_t)((M2_raw/number_of_oversample*VDDA)/4095)*153/100;
 		Voltage_offset_temp[2] += (int32_t)((M3_raw/number_of_oversample*VDDA)/4095)*153/100;
-
 		calibrating--;
 
 		if(!calibrating){
 			Voltage_offset[0] = Voltage_offset_temp[0]/number_of_calibration_points;
 			Voltage_offset[1] = Voltage_offset_temp[1]/number_of_calibration_points;
 			Voltage_offset[2] = Voltage_offset_temp[2]/number_of_calibration_points;
+
 		}
 	}
+
+
+
+	//---------------DAC DEBUG-------------
+	HAL_DAC_Init(&hdac1);
+	HAL_DAC_Start(&hdac1, DAC1_CHANNEL_1);
+
+
 	return VDDA; //success
 }
 
@@ -169,6 +179,7 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
 		VT_data.V_aux = (VT_adc_result_DMA[3]/number_of_VT_oversample*VDDA*57)/ADC_RES/10;
 		VT_IRQ_callback(&VT_data);
 	}
+//	dac_value(data.Current_DC);
 }
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc){
 	if (hadc == &hadc1){
@@ -186,5 +197,11 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc){
 		VT_data.V_aux = (VT_adc_result_DMA[7]/number_of_VT_oversample*VDDA*57)/ADC_RES/10;
 		VT_IRQ_callback(&VT_data);
 	}
+//	 dac_value(data.Current_DC);
 
+}
+
+void dac_value(uint16_t V_dac){
+	uint16_t dac_value = ((V_dac*ADC_RES)/VDDA);
+	HAL_DAC_SetValue(&hdac1, DAC1_CHANNEL_1, DAC_ALIGN_12B_R, dac_value);
 }

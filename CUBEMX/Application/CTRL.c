@@ -10,29 +10,11 @@
 #include "CTRL.h"
 #include "tim.h"
 #include "dma.h"
-//#include "cmsis_os2.h"
 
-
-
-//thread setup
-void CTRL_thread(void);
 //PWM setup
-void inverter(uint16_t angle, uint16_t duty);
 #define duty_max 1499
 #define pi 3.1415926535
 
-//angle PID
-
-
-//initialization
-void CTRL_init(void){
-	//create thread
-//	CTRL_attr.name = "Control thread";
-//	CTRL_attr.priority = 8;
-//	CTRL_thread_id = osThreadNew((void *)CTRL_thread, NULL, &CTRL_attr);
-}
-
-//thread
 void CTRL_init_PWM(void){
 	if(HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1) != HAL_OK) Error_Handler(); //error
 	if(HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1) != HAL_OK) Error_Handler(); //error
@@ -55,7 +37,7 @@ void CTRL_init_PWM(void){
 //	return (4*deg*(180-deg)/(40500 - deg*(180-deg)));
 //}
 
-void inverter(uint16_t angle, uint16_t voltage){
+void inverter(int16_t angle, uint16_t voltage){
 
 	angle = angle%360;
 	uint32_t compare_M1 = 0;
@@ -65,7 +47,7 @@ void inverter(uint16_t angle, uint16_t voltage){
 	float deg = (float)(angle%60);
 	//uint32_t T1 = (uint32_t )(duty_max*duty*((240-4*deg)*(120-deg)/(40500 - (60-deg)*(120-deg))) ); //*pi/180
 	uint16_t T1 = (uint16_t)(voltage*(float)( 4*(60-deg)*(180-(60-deg))/(40500 - (60-deg)*(180-(60-deg))))); //*pi/180
-	uint16_t T2 = (uint16_t)(voltage*(float)(4*deg*(180-deg)/(40500 - deg*(180-deg))) );
+	uint16_t T2 = (uint16_t)(voltage*(float)(4*deg*(180-deg)/(40500 - deg*(180-deg))));
 	uint16_t T0 = (duty_max-T1-T2)/2;
 
 	if(angle >= 0 && angle < 60){
@@ -98,7 +80,6 @@ void inverter(uint16_t angle, uint16_t voltage){
 		compare_M2 = T0;
 		compare_M3 = T0+T1+T2;
 		}
-
 	//PrintServerPrintf("OK %d %d %d %d\r\n", (uint32_t)(compare_M1), (uint32_t)(compare_M2), (uint32_t)(compare_M3), (int32_t)angle);
 	TIM1->CCR1 = compare_M1;
 	TIM1->CCR2 = compare_M2;
@@ -108,7 +89,6 @@ void shutoff(void){
 	TIM1->CCR1 = 0;
 	TIM1->CCR2 = 0;
 	TIM1->CCR3 = 0;
-
 }
 void shutdown(void){
 	HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1); //error
@@ -121,7 +101,4 @@ void shutdown(void){
 	HAL_TIMEx_PWMN_Stop(&htim1, TIM_CHANNEL_3); //error
 
 	HAL_TIM_Base_Stop(&htim1);
-}
-void tim1_PWM_PulseFinishedCallback(void){
-	//osThreadFlagsSet(CTRL_thread_id, update_flag);
 }
