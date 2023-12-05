@@ -8,15 +8,19 @@
 #include "main.h"
 #include <stdlib.h>
 #include "spi.h"
+#include "tim.h"
 
 #include "Encoders_SPI.h"
 
-#define ORBIS_SPI_SIZE 10
+#define ORBIS_SPI_SIZE 5
 #define ORBIS_NORNAL_OPERATION 't'
-#define ORBIS_ERROR_OPERATION 'd'
+//#define ORBIS_ERROR_OPERATION 'd'
 
 uint8_t SPI1_tx_buff[ORBIS_SPI_SIZE] = {0};
 uint8_t SPI1_rx_buff[ORBIS_SPI_SIZE];
+
+Encoders_Callback Encoders_IRQ_callback;
+Encoders data_encoders;
 
 
 /*
@@ -38,12 +42,54 @@ uint8_t SPI1_rx_buff[ORBIS_SPI_SIZE];
  *
  *
  */
-void ORBIS_init(){
+void ORBIS_init(Encoders_Callback __IRQ_callback){
+	HAL_GPIO_WritePin(ENCODER1_CS_GPIO_Port, ENCODER1_CS_Pin, 1);
+	HAL_GPIO_WritePin(ENCODER2_CS_GPIO_Port, ENCODER1_CS_Pin, 1);
 	//setup callback
+	Encoders_IRQ_callback = __IRQ_callback;
 
 	//setup DMA
 	SPI1_tx_buff[0] = ORBIS_NORNAL_OPERATION;
-	HAL_SPI_TransmitReceive_DMA(&hspi1, SPI1_tx_buff, SPI1_rx_buff, ORBIS_SPI_SIZE); //
-	//setup timer
+	HAL_GPIO_WritePin(ENCODER1_CS_GPIO_Port, ENCODER1_CS_Pin, 0);
+	HAL_GPIO_WritePin(ENCODER1_CS_GPIO_Port, ENCODER2_CS_Pin, 0);
+	HAL_SPI_TransmitReceive_DMA(&hspi1, SPI1_tx_buff, SPI1_rx_buff, ORBIS_SPI_SIZE);
+	HAL_SPI_TransmitReceive_DMA(&hspi3, SPI1_tx_buff, SPI1_rx_buff, ORBIS_SPI_SIZE);
 
+	//setup timer
+	HAL_TIM_Base_Start_IT(&htim3);
+
+}
+
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi)
+{
+	if (hspi == &hspi1) {
+//		HAL_GPIO_WritePin(ENCODER1_CS_GPIO_Port, ENCODER1_CS_Pin, 1);
+		data_encoders.Calculated_pos = 10;
+		data_encoders.Encoder1_temp_x10 = (SPI1_rx_buff[3] << 8) | (SPI1_rx_buff[2]);
+		data_encoders.Encoder1_pos = (SPI1_rx_buff[1] << 6) | (SPI1_rx_buff[0] >> 2);
+		Encoders_IRQ_callback(&data_encoders);
+
+//		HAL_GPIO_WritePin(ENCODER1_CS_GPIO_Port, ENCODER1_CS_Pin, 0);
+		HAL_SPI_TransmitReceive_DMA(&hspi1, SPI1_tx_buff, SPI1_rx_buff, ORBIS_SPI_SIZE);
+	}
+	if (hspi == &hspi3) {
+		HAL_GPIO_WritePin(ENCODER2_CS_GPIO_Port, ENCODER2_CS_Pin, 1);
+		data_encoders.Calculated_pos = 10;
+		data_encoders.Encoder2_temp_x10 = (SPI1_rx_buff[3] << 8) | (SPI1_rx_buff[2]);
+		data_encoders.Encoder2_pos = (SPI1_rx_buff[1] << 6) | (SPI1_rx_buff[0] >> 2);
+		Encoders_IRQ_callback(&data_encoders);
+
+		HAL_GPIO_WritePin(ENCODER2_CS_GPIO_Port, ENCODER2_CS_Pin, 0);
+		HAL_SPI_TransmitReceive_DMA(&hspi3, SPI1_tx_buff, SPI1_rx_buff, ORBIS_SPI_SIZE);
+	}
+
+}
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim){
+	HAL_GPIO_WritePin(ENCODER1_CS_GPIO_Port, ENCODER1_CS_Pin, 1);
+	HAL_GPIO_WritePin(ENCODER1_CS_GPIO_Port, ENCODER1_CS_Pin, 0);
+}
+
+void tim3_PWM_PulseFinishedCallback(void){
+	HAL_GPIO_WritePin(ENCODER1_CS_GPIO_Port, ENCODER1_CS_Pin, 1);
+	HAL_GPIO_WritePin(ENCODER1_CS_GPIO_Port, ENCODER1_CS_Pin, 0);
 }
