@@ -112,6 +112,8 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  extern int g_pfnVectors[];
+	   SCB->VTOR = (uint32_t)(void*)g_pfnVectors;
 	BLDC_main();
     /* USER CODE END WHILE */
 
