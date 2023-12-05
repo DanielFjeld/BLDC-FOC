@@ -1,0 +1,4 @@
+../Application/Encoders_SPI.c:45:6:ORBIS_init	16	static
+../Application/Encoders_SPI.c:63:6:HAL_SPI_TxRxCpltCallback	16	static
+../Application/Encoders_SPI.c:87:6:HAL_TIM_PeriodElapsedCallback	8	static
+../Application/Encoders_SPI.c:92:6:tim3_PWM_PulseFinishedCallback	8	static

@@ -82,11 +82,11 @@
 #define RUNNING_LED_DEBUG2
 #define PRINT_DEBUG
 
-#define Current_debug
+//#define Current_debug
 //#define Voltage_debug
 //#define Temperature_debug
 //#define Status_debug
-//#define Position_debug
+#define Position_debug
 
 #define DAC_DEBUG
 
@@ -283,7 +283,7 @@ void BLDC_main(void){
 	Initialize(&Angle_PID);
 
 	//setup encoder
-	//encoder_init((void*)&Encoders_IRQ);
+	ORBIS_init((void*)&Encoders_IRQ);
 
 	//setup current
 	current_init((void*)&Current_IRQ);
