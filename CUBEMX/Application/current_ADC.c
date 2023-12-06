@@ -73,6 +73,9 @@ int32_t ADC_CAL_init(ADC_HandleTypeDef *hadc){
 	uint16_t calibrating = number_of_calibration_points;
 	volatile uint32_t Voltage_offset_temp[3] = {0};
 	ADC_ChannelConfTypeDef sConfig = {0};
+
+	calibrating = 0;
+
 	while(calibrating){
 		sConfig.Channel = ADC_CHANNEL_0;
 		HAL_status = HAL_ADC_ConfigChannel(adc_handle_CAL, &sConfig); // required for code to sample both channels, why?
@@ -125,6 +128,8 @@ int32_t ADC_CAL_init(ADC_HandleTypeDef *hadc){
 		uint32_t vdda_raw = HAL_ADC_GetValue(adc_handle_CAL);
 		HAL_status = HAL_ADC_Stop(adc_handle_CAL);
 		if (HAL_status != HAL_OK)return -6; //ADC start failed
+
+
 		//get current samples;
 		VDDA = (int16_t)3000*(*vrefint)/(vdda_raw/number_of_oversample);
 		Voltage_offset_temp[0] += (int32_t)((M1_raw/number_of_oversample*VDDA)/4095)*153/100; //*153/100
@@ -139,7 +144,9 @@ int32_t ADC_CAL_init(ADC_HandleTypeDef *hadc){
 
 		}
 	}
-
+	Voltage_offset[0] = 2400;
+	Voltage_offset[1] = 2400;
+	Voltage_offset[2] = 2400;
 
 
 	//---------------DAC DEBUG-------------
@@ -169,7 +176,7 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
 		data.Current_M1 = -(int32_t)((((adc_result_DMA[2]/number_of_oversample*VDDA)/ADC_RES)*153/100)-Voltage_offset[0])*50;
 		data.Current_M2 = -(int32_t)((((adc_result_DMA[1]/number_of_oversample*VDDA)/ADC_RES)*153/100)-Voltage_offset[1])*50;
 		data.Current_M3 = -(int32_t)((((adc_result_DMA[0]/number_of_oversample*VDDA)/ADC_RES)*153/100)-Voltage_offset[2])*50;
-		data.Current_DC = (uint32_t)((abs((int)data.Current_M1)+abs((int)data.Current_M2)+abs((int)data.Current_M3))/2);
+		data.Current_DC = ((abs((int)data.Current_M1)+abs((int)data.Current_M2)+abs((int)data.Current_M3))/2);
 		Curent_IRQ_callback(&data);
 	}
 	if (hadc == &hadc2){
@@ -187,7 +194,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc){
 		data.Current_M1 = -(int32_t)((((adc_result_DMA[6]/number_of_oversample*VDDA)/ADC_RES)*153/100)-Voltage_offset[0])*50;
 		data.Current_M2 = -(int32_t)((((adc_result_DMA[5]/number_of_oversample*VDDA)/ADC_RES)*153/100)-Voltage_offset[1])*50;
 		data.Current_M3 = -(int32_t)((((adc_result_DMA[4]/number_of_oversample*VDDA)/ADC_RES)*153/100)-Voltage_offset[2])*50;
-		data.Current_DC = (uint32_t)((abs((int)data.Current_M1)+abs((int)data.Current_M2)+abs((int)data.Current_M3))/2);
+		data.Current_DC = ((abs((int)data.Current_M1)+abs((int)data.Current_M2)+abs((int)data.Current_M3))/2);
 		Curent_IRQ_callback(&data);
 	}
 	if (hadc == &hadc2){

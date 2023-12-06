@@ -80,7 +80,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi)
 
 		last_pos = (int32_t)data_encoders.Encoder1_pos;
 		if(count  == 10){
-			data_encoders.Velocity = (int32_t)(velocity_temp/360000/10*10000*60);
+			data_encoders.Velocity = (int32_t)(velocity_temp/360/10*10000*60);
 			velocity_temp = 0;
 			count = 0;
 		}

@@ -79,7 +79,7 @@
 #define LOOP_FREQ_KHZ 30
 
 //#define RUNNING_LED_DEBUG
-#define RUNNING_LED_DEBUG2
+//#define RUNNING_LED_DEBUG2
 #define PRINT_DEBUG
 
 //#define Current_debug
@@ -200,7 +200,7 @@ CAN_LIMITS LIMIT_V_BAT = {
 	.max_error = NAN,
 	.min_error = NAN,
 	.max_warning = 60000,
-	.min_warning = 9000,
+	.min_warning = NAN,
 	.max = NAN,
 	.min = NAN
 };
@@ -222,18 +222,10 @@ CAN_LIMITS LIMIT_temp = {
 };
 
 //------------PID LIMITS------------------
-CAN_LIMITS LIMIT_V_motor = {
-	.max_error = NAN,
-	.min_error = NAN,
-	.max_warning = NAN,
-	.min_warning = NAN,
-	.max = 1499,
-	.min = 0
-};
 CAN_LIMITS LIMIT_Current = {
 	.max_error = 60000,
 	.min_error = NAN,
-	.max_warning = 3000,
+	.max_warning = 30000,
 	.min_warning = NAN,
 	.max = 2,
 	.min = 0
@@ -241,8 +233,8 @@ CAN_LIMITS LIMIT_Current = {
 CAN_LIMITS LIMIT_Velocity = {
 	.max_error = NAN,
 	.min_error = NAN,
-	.max_warning = 10,
-	.min_warning = NAN,
+	.max_warning = 3000,
+	.min_warning = -3000,
 	.max = 10,
 	.min = 0
 };
@@ -264,7 +256,7 @@ void BLDC_main(void){
 	HAL_Delay(1000);
 	//----------------PID---------
 	SetSampleTime(&Current_PID, 40); //40us = 25kHz
-	SetTunings(&Current_PID, 0.005f, 5.0f, 0.0f, 1); //alva
+	SetTunings(&Current_PID, 0.005f, 0.001f, 0.0f, 1); //alva
 //	SetTunings(&Current_PID, 0.005f, 40.0f, 0.0f, 1); //gimbal
 	SetOutputLimits(&Current_PID, 0, 1499);
 	SetControllerDirection(&Current_PID, DIRECT);
@@ -272,16 +264,16 @@ void BLDC_main(void){
 	Initialize(&Current_PID);
 
 	SetSampleTime(&Velocity_PID, 100); //100s = 10kHz
-	SetTunings(&Velocity_PID, 1.0f, 0.1f, 0.0f, 1);
-	SetOutputLimits(&Velocity_PID, 0, 10);
+	SetTunings(&Velocity_PID, 0.00001f, 0.1f, 0.0f, 1);
+	SetOutputLimits(&Velocity_PID, 0, 100);
 	SetControllerDirection(&Velocity_PID, DIRECT);
 	SetMode(&Velocity_PID,  AUTOMATIC);
 	Initialize(&Velocity_PID);
 
 
 	SetSampleTime(&Angle_PID, 100); //100s = 10kHz
-	SetTunings(&Angle_PID, 1.0f, 0.0f, 0.0f, 1);
-	SetOutputLimits(&Angle_PID, 0, 10);
+	SetTunings(&Angle_PID, 10.0f, 0.0f, 0.0f, 1);
+	SetOutputLimits(&Angle_PID, -4000000, 4000000);
 	SetControllerDirection(&Angle_PID, DIRECT);
 	SetMode(&Angle_PID,  AUTOMATIC);
 	Initialize(&Angle_PID);
@@ -340,6 +332,10 @@ void BLDC_main(void){
 	uint32_t last_pos = 0;
 	uint8_t velocity_index = 0;
 	float velocity = 0;
+
+	int32_t position_overflow = 0;
+
+	int32_t pos_set_test = 360000*10;
 
 	while(1){
 		#ifdef RUNNING_LED_DEBUG2
@@ -419,6 +415,10 @@ void BLDC_main(void){
 		//-------------------RUN FIR FILTER---------------------
 		float test = Update_FIR_filter((float)(IRQ_Current_BUFF.Current_DC));
 
+		//----------------------position-----------------
+		if (last_pos > 270000 && IRQ_Encoders_BUFF.Encoder1_pos < 90000)position_overflow++;
+		else if (last_pos < 90000 && IRQ_Encoders_BUFF.Encoder1_pos > 270000)position_overflow--;
+
 		//-------------------calculate velocity------------------
 		velocity_temp[velocity_index] = (IRQ_Encoders_BUFF.Encoder1_pos - last_pos);
 		last_pos = IRQ_Encoders_BUFF.Encoder1_pos;
@@ -435,21 +435,32 @@ void BLDC_main(void){
 		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 0);
 		#endif
 
-		Angle_PID.Input = (float)IRQ_Encoders_BUFF.Calculated_pos;
-		Velocity_PID.Input = (float)IRQ_Encoders_BUFF.Velocity;
+
+
+
+		Angle_PID.Input = (float)IRQ_Encoders_BUFF.Encoder1_pos + position_overflow*360000;
+		Velocity_PID.Input = (float)(abs(IRQ_Encoders_BUFF.Velocity));
 		Current_PID.Input = test;
 
-		Angle_PID.Setpoint = Limit(&LIMIT_Encoder_2, IRQ_STATUS_BUFF.setpoint);
+		Angle_PID.Setpoint = pos_set_test;
+		pos_set_test++;
 		Compute(&Angle_PID);
 
-		Velocity_PID.Setpoint =  Limit(&LIMIT_Velocity, Angle_PID.Output);
+		Velocity_PID.Setpoint = (abs(Angle_PID.Output));
+
 		Compute(&Velocity_PID);
 
 		int8_t direction = -1;
 		#ifndef ZERO_GRAVITY
 //		if(IRQ_Voltage_Temp_BUFF.V_Bat > 10000)SetMode(&Current_PID,  AUTOMATIC);//Limit(&LIMIT_Current, Velocity_PID.Output);
 //		else SetMode(&Current_PID,  MANUAL);
+		//SetMode(&Angle_PID,  AUTOMATIC);
 		Current_PID.Setpoint = 1000;
+//		Current_PID.Setpoint = Velocity_PID.Output;
+
+		if(Angle_PID.Output > 0) direction = 1;
+		else direction = -1;
+
 		#else
 		Current_PID.Setpoint = weight*(fast_sin_2((abs)((float)IRQ_Encoders_BUFF.Encoder1_pos)/1000));
 		if(IRQ_Encoders_BUFF.Encoder1_pos > 180000) direction = -1;
@@ -465,7 +476,7 @@ void BLDC_main(void){
 		#endif
 
 		if(error){
-			Status = BLDC_STOPPED_WITH_BREAK;
+			Status = BLDC_ERROR;
 			shutoff();
 		}
 		else if (Status == BLDC_STOPPED_AND_SHUTDOWN){
@@ -474,13 +485,16 @@ void BLDC_main(void){
 		}
 		else if (Status == BLDC_STOPPED_WITH_BREAK){
 			//shutoff();
-			//inverter(0, (uint16_t)Limit(&LIMIT_V_motor, Current_PID.Output));
-			//inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(direction*90), (uint16_t)Limit(&LIMIT_V_motor, Current_PID.Output));
-			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(direction*90), 400);
+			//inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(direction*90), Current_PID.Output);
+//			inverter(0, 200);
+			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(direction*90), (uint16_t)Velocity_PID.Output);
+
+
+			//inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(direction*90), (uint16_t)Current_PID.Output);
 			//inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(1*90), (uint16_t)Limit(&LIMIT_V_motor, Current_PID.Output));
 		}
 		else if (Status == BLDC_RUNNING){
-			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(direction*90), (uint16_t)Limit(&LIMIT_V_motor, Current_PID.Output));
+			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(direction*90), (uint16_t)Current_PID.Output);
 		}
 		else if (Status == BLDC_CALIBRATING_ENCODER){
 			//inverter(0, (uint16_t)Limit(&LIMIT_V_motor, Velocity_PID.Output));
@@ -579,7 +593,8 @@ void BLDC_main(void){
 
 		//-----------------update dac---------------------------
 		#ifdef DAC_DEBUG
-		dac_value(Current_PID.Output);
+//		dac_value(Current_PID.Output);
+		dac_value(test);
 		#endif
 	}
 }
