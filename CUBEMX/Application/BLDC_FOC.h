@@ -27,8 +27,8 @@
 	#define CAN_LIMITS_ID 0x8		//need to be requested
 
 	//------MOTOR PARAM-----------------
-	#define polepairs 2
-	#define offset 30000
+	#define polepairs 17
+	#define offset 313800
 	#define deg_pr_pole 360000/polepairs
 	//-----------------------------------------------------
 
