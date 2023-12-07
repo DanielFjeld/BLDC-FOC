@@ -1,4 +1,4 @@
 ../Application/CTRL.c:18:6:CTRL_init_PWM	8	static
-../Application/CTRL.c:40:6:inverter	12	static
-../Application/CTRL.c:88:6:shutoff	0	static
-../Application/CTRL.c:93:6:shutdown	8	static
+../Application/CTRL.c:40:6:inverter	16	static
+../Application/CTRL.c:89:6:shutoff	0	static
+../Application/CTRL.c:94:6:shutdown	8	static

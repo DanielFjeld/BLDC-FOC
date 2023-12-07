@@ -1,6 +1,6 @@
-../Application/current_ADC.c:45:9:ADC_CAL_init	24
-../Application/current_ADC.c:153:6:current_init	1
-../Application/current_ADC.c:160:6:voltage_temperature_init	1
-../Application/current_ADC.c:166:6:HAL_ADC_ConvHalfCpltCallback	3
-../Application/current_ADC.c:184:6:HAL_ADC_ConvCpltCallback	3
-../Application/current_ADC.c:204:6:dac_value	1
+../Application/current_ADC.c:45:9:ADC_CAL_init	3
+../Application/current_ADC.c:160:6:current_init	1
+../Application/current_ADC.c:167:6:voltage_temperature_init	1
+../Application/current_ADC.c:173:6:HAL_ADC_ConvHalfCpltCallback	3
+../Application/current_ADC.c:191:6:HAL_ADC_ConvCpltCallback	3
+../Application/current_ADC.c:211:6:dac_value	1
