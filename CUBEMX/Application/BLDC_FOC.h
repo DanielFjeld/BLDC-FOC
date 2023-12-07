@@ -27,8 +27,8 @@
 	#define CAN_LIMITS_ID 0x8		//need to be requested
 
 	//------MOTOR PARAM-----------------
-	#define polepairs 2
-	#define offset 30000
+	#define polepairs 17
+	#define offset 317300
 	#define deg_pr_pole 360000/polepairs
 	//-----------------------------------------------------
 
@@ -96,14 +96,16 @@
 		BLDC_STOPPED_WITH_BREAK,
 		BLDC_STOPPED_AND_SHUTDOWN,
 		BLDC_CALIBRATING_ENCODER,
-		BLDC_RUNNING
+		BLDC_RUNNING,
+		BLDC_ERROR
 	}BLDC_STATUS_Feedback;
 
 	static char status_sting[4][26] = {
 			"  BLDC STOPPED WITH BREAK\0",
 			"BLDC STOPPED AND SHUTDOWN\0",
 			" BLDC CALIBRATING ENCODER\0",
-			"             BLDC RUNNING\0"
+			"             BLDC RUNNING\0",
+			"               BLDC ERROR\0"
 	};
 
 	void BLDC_main(void);

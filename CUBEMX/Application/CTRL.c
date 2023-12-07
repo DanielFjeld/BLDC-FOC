@@ -38,7 +38,8 @@ void CTRL_init_PWM(void){
 //}
 
 void inverter(int16_t angle, uint16_t voltage){
-
+	angle = (angle+360*2)%360;
+	angle = (360 - angle);
 	angle = angle%360;
 	uint32_t compare_M1 = 0;
 	uint32_t compare_M2 = 0;
@@ -75,12 +76,12 @@ void inverter(int16_t angle, uint16_t voltage){
 		compare_M2 = T0;
 		compare_M3 = T0+T2;
 		}
-	else if(angle >= 300 && angle < 360){
+	else if(angle >= 300 && angle <= 360){
 		compare_M1 = T0+T1;
 		compare_M2 = T0;
 		compare_M3 = T0+T1+T2;
 		}
-	//PrintServerPrintf("OK %d %d %d %d\r\n", (uint32_t)(compare_M1), (uint32_t)(compare_M2), (uint32_t)(compare_M3), (int32_t)angle);
+//	PrintServerPrintf("OK %d %d %d %d\r\n", (uint32_t)(compare_M1), (uint32_t)(compare_M2), (uint32_t)(compare_M3), (int32_t)angle);
 	TIM1->CCR1 = compare_M1;
 	TIM1->CCR2 = compare_M2;
 	TIM1->CCR3 = compare_M3;
