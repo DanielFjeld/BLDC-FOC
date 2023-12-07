@@ -5,13 +5,12 @@
  *      Author: Daniel
  */
 /*TODO:
- * Make driver for encoders (velocity and position)
+ * OK---->Make driver for encoders (velocity and position)
  * encoder calibration (finds magnetic 0 DEG and create offset for encoder)(can be done manually)
  * OK---->Read voltage and temperature (in Current.c)
  * OK---->use buffer after callback to store all values that get changed in IRQ
  * create IIR or FIR filter with built in STM hardware
  * stop if no data or move to another position?
- * Use DAC to measure current
  *
  * ---------TEST-------------
  * Test CAN messages
@@ -88,7 +87,7 @@
 #define Status_debug
 #define Position_debug
 
-#define DAC_DEBUG
+//#define DAC_DEBUG
 
 //#define ZERO_GRAVITY
 float weight = 100;
@@ -359,10 +358,20 @@ void BLDC_main(void){
 		else if(Status == BLDC_STOPPED_WITH_BREAK && IRQ_STATUS_BUFF.status == INPUT_RESET_ERRORS)error = 0;
 
 		//start motor when not running
-		else if(Status == BLDC_STOPPED_WITH_BREAK && IRQ_STATUS_BUFF.status == INPUT_START)Status = BLDC_RUNNING;
+		else if(Status == BLDC_STOPPED_WITH_BREAK && IRQ_STATUS_BUFF.status == INPUT_START){
+			Status = BLDC_RUNNING;
+			SetMode(&Current_PID,  AUTOMATIC);
+			SetMode(&Velocity_PID,  AUTOMATIC);
+			SetMode(&Angle_PID,  AUTOMATIC);
+		}
 
 		//stop motor when running
-		else if(Status == BLDC_RUNNING && IRQ_STATUS_BUFF.status == INPUT_STOP_WITH_BREAK)Status = BLDC_STOPPED_WITH_BREAK;
+		else if(Status == BLDC_RUNNING && IRQ_STATUS_BUFF.status == INPUT_STOP_WITH_BREAK){
+			Status = BLDC_STOPPED_WITH_BREAK;
+			SetMode(&Current_PID,  MANUAL);
+			SetMode(&Velocity_PID,  MANUAL);
+			SetMode(&Angle_PID,  MANUAL);
+		}
 		else if(Status == BLDC_RUNNING && IRQ_STATUS_BUFF.status == INPUT_STOP_AND_SHUTDOWN)Status = BLDC_STOPPED_AND_SHUTDOWN;
 
 		//time keepers
@@ -412,6 +421,9 @@ void BLDC_main(void){
 		warning |= (Limit_callback&1)      << 7; //warning
 		error   |= ((Limit_callback&2)>>1) << 7; //error
 
+		if (Status == BLDC_RUNNING && Angle_PID.Input > IRQ_STATUS_BUFF.setpoint - 90000 && Angle_PID.Input < IRQ_STATUS_BUFF.setpoint + 90000) warning &= ~(1 << 8); //warning
+		else if (Status == BLDC_RUNNING)warning |= 1 << 8; //warning
+
 		//-------------------RUN FIR FILTER---------------------
 		float test = Update_FIR_filter((float)(IRQ_Current_BUFF.Current_DC));
 
@@ -443,6 +455,8 @@ void BLDC_main(void){
 		Current_PID.Input = test;
 
 		Angle_PID.Setpoint = pos_set_test;
+
+		Angle_PID.Setpoint = IRQ_STATUS_BUFF.setpoint;
 		pos_set_test += 20;
 		Compute(&Angle_PID);
 
@@ -484,17 +498,18 @@ void BLDC_main(void){
 			shutdown();
 		}
 		else if (Status == BLDC_STOPPED_WITH_BREAK){
-			//shutoff();
+			shutoff();
 			//inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(direction*90), Current_PID.Output);
 //			inverter(0, 200);
-			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(direction*90), (uint16_t)Velocity_PID.Output);
+
 
 
 			//inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(direction*90), (uint16_t)Current_PID.Output);
 			//inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(1*90), (uint16_t)Limit(&LIMIT_V_motor, Current_PID.Output));
 		}
 		else if (Status == BLDC_RUNNING){
-			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(direction*90), (uint16_t)Current_PID.Output);
+			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(direction*90), (uint16_t)Velocity_PID.Output);
+//			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(direction*90), (uint16_t)Current_PID.Output);
 		}
 		else if (Status == BLDC_CALIBRATING_ENCODER){
 			//inverter(0, (uint16_t)Limit(&LIMIT_V_motor, Velocity_PID.Output));
@@ -546,7 +561,7 @@ void BLDC_main(void){
 					"TEMPERATURE[NTC1:%5d NTC2:%5d]  "
 					#endif
 					#ifdef Status_debug
-					"STATUS[MODE:%s SP:%2d WARN:0x%02x ERROR:0x%02x]"
+					"STATUS[MODE:%s SP:%8d WARN:0x%02x ERROR:0x%02x]"
 					#endif
 					#ifdef Position_debug
 					"POSITION[EN1:%7d EN2:%7d CALC:%7d VELOCITY:%7i]"
