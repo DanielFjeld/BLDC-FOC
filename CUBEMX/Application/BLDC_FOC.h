@@ -60,6 +60,7 @@
 		uint32_t status;
 		uint32_t reset_faults;
 		int32_t setpoint;
+		uint8_t recerved[52];
 	}CAN_Status;
 	typedef struct CAN_PID{
 		float Kp;

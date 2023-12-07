@@ -67,6 +67,8 @@ void Error_Handler(void);
 #define V_BAT_ADC_GPIO_Port GPIOA
 #define V_AUX_ADC_Pin GPIO_PIN_6
 #define V_AUX_ADC_GPIO_Port GPIOA
+#define Button_Pin GPIO_PIN_0
+#define Button_GPIO_Port GPIOB
 #define ADC2_NTC1_Pin GPIO_PIN_2
 #define ADC2_NTC1_GPIO_Port GPIOB
 #define ADC2_NTC2_Pin GPIO_PIN_11
@@ -77,10 +79,6 @@ void Error_Handler(void);
 #define WARNING_LED_GPIO_Port GPIOC
 #define ERROR_LED_Pin GPIO_PIN_9
 #define ERROR_LED_GPIO_Port GPIOA
-#define ENCODER2_CS_Pin GPIO_PIN_2
-#define ENCODER2_CS_GPIO_Port GPIOD
-#define ENCODER1_CS_Pin GPIO_PIN_6
-#define ENCODER1_CS_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

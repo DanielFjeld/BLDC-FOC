@@ -1,10 +1,4 @@
-../Application/BLDC_FOC.c:116:7:Update_FIR_filter	24	static
-../Application/BLDC_FOC.c:142:6:Current_IRQ	16	static
-../Application/BLDC_FOC.c:155:6:Voltage_Temp_IRQ	16	static
-../Application/BLDC_FOC.c:158:6:Encoders_IRQ	16	static
-../Application/BLDC_FOC.c:163:6:Can_RX_Status_IRQ	16	static
-../Application/BLDC_FOC.c:243:10:check_value	16	static
-../Application/BLDC_FOC.c:248:7:Limit	16	static
-../Application/BLDC_FOC.c:255:6:BLDC_main	960	static
-../Application/BLDC_FOC.c:602:9:mech_to_el_deg	16	static
-../Application/BLDC_FOC.c:608:7:fast_sin_2	16	static
+../Application/BLDC_FOC.c:93:6:Current_IRQ	16	static
+../Application/BLDC_FOC.c:106:6:Voltage_Temp_IRQ	16	static
+../Application/BLDC_FOC.c:110:6:Can_RX_Status_IRQ	16	static
+../Application/BLDC_FOC.c:129:6:BLDC_main	8	static
