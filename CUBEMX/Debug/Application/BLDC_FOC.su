@@ -5,6 +5,6 @@
 ../Application/BLDC_FOC.c:163:6:Can_RX_Status_IRQ	16	static
 ../Application/BLDC_FOC.c:243:10:check_value	16	static
 ../Application/BLDC_FOC.c:248:7:Limit	16	static
-../Application/BLDC_FOC.c:255:6:BLDC_main	928	static
+../Application/BLDC_FOC.c:255:6:BLDC_main	960	static
 ../Application/BLDC_FOC.c:602:9:mech_to_el_deg	16	static
 ../Application/BLDC_FOC.c:608:7:fast_sin_2	16	static

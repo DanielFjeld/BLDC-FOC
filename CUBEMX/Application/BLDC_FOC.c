@@ -85,7 +85,7 @@
 //#define Current_debug
 //#define Voltage_debug
 //#define Temperature_debug
-//#define Status_debug
+#define Status_debug
 #define Position_debug
 
 #define DAC_DEBUG
@@ -265,7 +265,7 @@ void BLDC_main(void){
 
 	SetSampleTime(&Velocity_PID, 100); //100s = 10kHz
 	SetTunings(&Velocity_PID, 0.00001f, 0.1f, 0.0f, 1);
-	SetOutputLimits(&Velocity_PID, 0, 100);
+	SetOutputLimits(&Velocity_PID, 0, 500);
 	SetControllerDirection(&Velocity_PID, DIRECT);
 	SetMode(&Velocity_PID,  AUTOMATIC);
 	Initialize(&Velocity_PID);
@@ -443,7 +443,7 @@ void BLDC_main(void){
 		Current_PID.Input = test;
 
 		Angle_PID.Setpoint = pos_set_test;
-		pos_set_test++;
+		pos_set_test += 20;
 		Compute(&Angle_PID);
 
 		Velocity_PID.Setpoint = (abs(Angle_PID.Output));
