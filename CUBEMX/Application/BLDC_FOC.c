@@ -81,11 +81,11 @@
 //#define RUNNING_LED_DEBUG2
 #define PRINT_DEBUG
 
-//#define Current_debug
+#define Current_debug
 //#define Voltage_debug
 //#define Temperature_debug
-#define Status_debug
-#define Position_debug
+//#define Status_debug
+//#define Position_debug
 
 //#define DAC_DEBUG
 
@@ -114,7 +114,7 @@ uint8_t FIR_index = 0;
 float FIR_Values[FIR_FILTER_LENGTH] = {0};
 float Update_FIR_filter(float input){
 	FIR_Values[FIR_index] = input;
-	float temp;
+	float temp = 0;
 	for(int i = 0; i < FIR_FILTER_LENGTH; i++){
 		temp += FIR_INPULSE_RESPONSE[i]*FIR_Values[i];
 	}
@@ -198,7 +198,7 @@ CAN_LIMITS LIMIT_Encoder_2 = {
 CAN_LIMITS LIMIT_V_BAT = {
 	.max_error = NAN,
 	.min_error = NAN,
-	.max_warning = 60000,
+	.max_warning = NAN,
 	.min_warning = NAN,
 	.max = NAN,
 	.min = NAN
@@ -222,9 +222,9 @@ CAN_LIMITS LIMIT_temp = {
 
 //------------PID LIMITS------------------
 CAN_LIMITS LIMIT_Current = {
-	.max_error = 60000,
+	.max_error = NAN,
 	.min_error = NAN,
-	.max_warning = 30000,
+	.max_warning = NAN,
 	.min_warning = NAN,
 	.max = 2,
 	.min = 0
@@ -232,8 +232,8 @@ CAN_LIMITS LIMIT_Current = {
 CAN_LIMITS LIMIT_Velocity = {
 	.max_error = NAN,
 	.min_error = NAN,
-	.max_warning = 3000,
-	.min_warning = -3000,
+	.max_warning = NAN,
+	.min_warning = NAN,
 	.max = 10,
 	.min = 0
 };
@@ -255,7 +255,7 @@ void BLDC_main(void){
 	HAL_Delay(1000);
 	//----------------PID---------
 	SetSampleTime(&Current_PID, 40); //40us = 25kHz
-	SetTunings(&Current_PID, 0.005f, 0.001f, 0.0f, 1); //alva
+	SetTunings(&Current_PID, 0.0000005f, 0.5f, 0.0f, 1); //alva
 //	SetTunings(&Current_PID, 0.005f, 40.0f, 0.0f, 1); //gimbal
 	SetOutputLimits(&Current_PID, 0, 1499);
 	SetControllerDirection(&Current_PID, DIRECT);
@@ -263,7 +263,7 @@ void BLDC_main(void){
 	Initialize(&Current_PID);
 
 	SetSampleTime(&Velocity_PID, 100); //100s = 10kHz
-	SetTunings(&Velocity_PID, 0.00001f, 0.1f, 0.0f, 1);
+	SetTunings(&Velocity_PID, 0.0005f, 0.03f, 0.0f, 1);
 	SetOutputLimits(&Velocity_PID, 0, 500);
 	SetControllerDirection(&Velocity_PID, DIRECT);
 	SetMode(&Velocity_PID,  AUTOMATIC);
@@ -324,7 +324,6 @@ void BLDC_main(void){
 	Encoders IRQ_Encoders_BUFF = {0};
 	CAN_Status  IRQ_STATUS_BUFF = {0};
 
-
 	BLDC_STATUS_Feedback Status = BLDC_STOPPED_WITH_BREAK;
 
 	float velocity_temp[200] = {0};
@@ -333,9 +332,6 @@ void BLDC_main(void){
 	float velocity = 0;
 
 	int32_t position_overflow = 0;
-
-	int32_t pos_set_test = 360000*10;
-
 	while(1){
 		#ifdef RUNNING_LED_DEBUG2
 		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 0);
@@ -421,8 +417,7 @@ void BLDC_main(void){
 		warning |= (Limit_callback&1)      << 7; //warning
 		error   |= ((Limit_callback&2)>>1) << 7; //error
 
-		if (Status == BLDC_RUNNING && Angle_PID.Input > IRQ_STATUS_BUFF.setpoint - 90000 && Angle_PID.Input < IRQ_STATUS_BUFF.setpoint + 90000) warning &= ~(1 << 8); //warning
-		else if (Status == BLDC_RUNNING)warning |= 1 << 8; //warning
+		if (Angle_PID.Input < (IRQ_STATUS_BUFF.setpoint - 20000) || Angle_PID.Input > (IRQ_STATUS_BUFF.setpoint + 20000)) warning |= (1 << 8); //warning
 
 		//-------------------RUN FIR FILTER---------------------
 		float test = Update_FIR_filter((float)(IRQ_Current_BUFF.Current_DC));
@@ -454,10 +449,7 @@ void BLDC_main(void){
 		Velocity_PID.Input = (float)(abs(IRQ_Encoders_BUFF.Velocity));
 		Current_PID.Input = test;
 
-		Angle_PID.Setpoint = pos_set_test;
-
-		Angle_PID.Setpoint = IRQ_STATUS_BUFF.setpoint;
-		pos_set_test += 20;
+		Angle_PID.Setpoint = (float)IRQ_STATUS_BUFF.setpoint;
 		Compute(&Angle_PID);
 
 		Velocity_PID.Setpoint = (abs(Angle_PID.Output));
@@ -469,7 +461,7 @@ void BLDC_main(void){
 //		if(IRQ_Voltage_Temp_BUFF.V_Bat > 10000)SetMode(&Current_PID,  AUTOMATIC);//Limit(&LIMIT_Current, Velocity_PID.Output);
 //		else SetMode(&Current_PID,  MANUAL);
 		//SetMode(&Angle_PID,  AUTOMATIC);
-		Current_PID.Setpoint = 1000;
+		Current_PID.Setpoint = 500;
 //		Current_PID.Setpoint = Velocity_PID.Output;
 
 		if(Angle_PID.Output > 0) direction = 1;
@@ -498,7 +490,13 @@ void BLDC_main(void){
 			shutdown();
 		}
 		else if (Status == BLDC_STOPPED_WITH_BREAK){
-			shutoff();
+			uint16_t test2 = 0;
+			if(Current_PID.Output != NAN)test2 = (uint16_t)Current_PID.Output;
+//			shutoff();
+//			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(1*90), test2);
+			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(1*90), 50);
+
+
 			//inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(direction*90), Current_PID.Output);
 //			inverter(0, 200);
 
@@ -542,7 +540,7 @@ void BLDC_main(void){
 			Feedback.Position_Encoder1_pos = IRQ_Encoders_BUFF.Encoder1_pos;
 			Feedback.Position_Encoder2_pos = IRQ_Encoders_BUFF.Encoder2_pos;
 //			Feedback.Position_Calculated_pos = IRQ_Encoders_BUFF.Calculated_pos;
-			Feedback.Position_Calculated_pos = mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset);
+			Feedback.Position_Calculated_pos = Angle_PID.Input;
 			Feedback.Position_Velocity = IRQ_Encoders_BUFF.Velocity;
 //			Feedback.Position_Velocity = (int32_t)velocity;
 			FDCAN_sendData(&hfdcan1, (CAN_FEEDBACK_ID << 8) 	| (CAN_DEVICE_ID << 4) | (CAN_BLDC_ID << 0), (uint8_t*)&Feedback);

@@ -74,7 +74,7 @@ int32_t ADC_CAL_init(ADC_HandleTypeDef *hadc){
 	volatile uint32_t Voltage_offset_temp[3] = {0};
 	ADC_ChannelConfTypeDef sConfig = {0};
 
-	calibrating = 0;
+//	calibrating = 0;
 
 	while(calibrating){
 		sConfig.Channel = ADC_CHANNEL_0;
@@ -144,21 +144,20 @@ int32_t ADC_CAL_init(ADC_HandleTypeDef *hadc){
 
 		}
 	}
-	Voltage_offset[0] = 2400;
-	Voltage_offset[1] = 2400;
-	Voltage_offset[2] = 2400;
+//	Voltage_offset[0] = 2500;
+//	Voltage_offset[1] = 2500;
+//	Voltage_offset[2] = 2500;
 
 
 	//---------------DAC DEBUG-------------
 	HAL_DAC_Init(&hdac1);
 	HAL_DAC_Start(&hdac1, DAC1_CHANNEL_1);
 
-
 	return VDDA; //success
 }
 
 void current_init(Current_Callback __IRQ_callback){
-	ADC_CAL_init(&hadc1);
+	//ADC_CAL_init(&hadc1);
 
 	Curent_IRQ_callback = __IRQ_callback;
 

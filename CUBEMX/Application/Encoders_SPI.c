@@ -63,9 +63,12 @@ void ORBIS_init(Encoders_Callback __IRQ_callback){
 
 }
 
-float velocity_temp;
+float velocity_accumulate;
 int32_t last_pos = 0;
-uint16_t count = 0;
+#define velocity_lpf_size 100
+uint8_t velocity_index = 0;
+float velocity_array[velocity_lpf_size] = {0};
+
 
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi)
 {
@@ -74,17 +77,19 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi)
 		data_encoders.Calculated_pos = SPI1_rx_buff[0]; //(SPI1_rx_buff[3] << 8) | (SPI1_rx_buff[2]);
 		data_encoders.Encoder1_pos = (uint32_t)(((uint32_t)(SPI1_rx_buff[0] << 6) | (SPI1_rx_buff[1] >> 2)) * 5625) >> 8;
 
-		if(((int32_t)data_encoders.Encoder1_pos - last_pos) > 180000)velocity_temp += ((int32_t)data_encoders.Encoder1_pos-last_pos - 360000);
-		else if(((int32_t)data_encoders.Encoder1_pos - last_pos) < -180000)velocity_temp += ((int32_t)data_encoders.Encoder1_pos-last_pos + 360000);
-		else velocity_temp += ((int32_t)data_encoders.Encoder1_pos-last_pos);
-
+		float velocity_temp;
+		if(((int32_t)data_encoders.Encoder1_pos - last_pos) > 180000)velocity_temp = ((int32_t)data_encoders.Encoder1_pos-last_pos - 360000);
+		else if(((int32_t)data_encoders.Encoder1_pos - last_pos) < -180000)velocity_temp = ((int32_t)data_encoders.Encoder1_pos-last_pos + 360000);
+		else velocity_temp = ((int32_t)data_encoders.Encoder1_pos-last_pos);
 		last_pos = (int32_t)data_encoders.Encoder1_pos;
-		if(count  == 10){
-			data_encoders.Velocity = (int32_t)(velocity_temp/360/10*10000*60);
-			velocity_temp = 0;
-			count = 0;
-		}
-		count++;
+
+		velocity_accumulate += velocity_temp;
+		velocity_accumulate -= velocity_array[velocity_index];
+		velocity_array[velocity_index] = velocity_temp;
+		velocity_index++;
+		if (velocity_index == velocity_lpf_size)velocity_index = 0;
+
+		data_encoders.Velocity = (int32_t)((velocity_accumulate*10000.0f*60.0f)/360.0f/velocity_lpf_size);
 	}
 	if (hspi == &hspi3) {
 		HAL_GPIO_WritePin(ENCODER2_CS_GPIO_Port, ENCODER2_CS_Pin, 1);
