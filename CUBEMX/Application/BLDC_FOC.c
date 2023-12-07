@@ -151,9 +151,14 @@ void BLDC_main(void){
 	while(1){
 		HAL_Delay(10);
 
-		Status_send.setpoint = IRQ_Voltage_Temp.V_Bat*20-3600000;
-		if(HAL_GPIO_ReadPin(Button_GPIO_Port, Button_Pin))Status_send.status = INPUT_STOP_WITH_BREAK;
-		else Status_send.status = INPUT_START;
+		Status_send.setpoint = IRQ_Voltage_Temp.V_Bat*2-360000;
+
+		if(HAL_GPIO_ReadPin(Button_GPIO_Port, Button_Pin))Status_send.setpoint = 0;
+		else Status_send.setpoint = 360000*5;
+		Status_send.status = INPUT_START;
+
+//		if(HAL_GPIO_ReadPin(Button_GPIO_Port, Button_Pin))Status_send.status = INPUT_STOP_WITH_BREAK;
+//		else Status_send.status = INPUT_START;
 		Status_send.reset_faults = 0;
 
 		FDCAN_sendData(&hfdcan1, (CAN_STATUS_ID << 8) | (CAN_DEVICE_ID << 4) | (CAN_BLDC_ID << 0), (uint8_t*)&Status_send);
