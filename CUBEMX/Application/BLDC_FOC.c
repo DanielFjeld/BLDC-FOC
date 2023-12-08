@@ -85,7 +85,7 @@
 //#define Voltage_debug
 //#define Temperature_debug
 //#define Status_debug
-//#define Position_debug
+#define Position_debug
 
 #define DAC_DEBUG
 
@@ -255,7 +255,7 @@ void BLDC_main(void){
 	HAL_Delay(100);
 	//----------------PID---------
 	SetSampleTime(&Current_PID, 40); //40us = 25kHz
-	SetTunings(&Current_PID, 0.0000005f, 0.5f, 0.0f, 1); //alva
+	SetTunings(&Current_PID, 0.00000005f, 80.1f, 0.0f, 1); //alva
 //	SetTunings(&Current_PID, 0.005f, 40.0f, 0.0f, 1); //gimbal
 	SetOutputLimits(&Current_PID, 0, 1499);
 	SetControllerDirection(&Current_PID, DIRECT);
@@ -458,16 +458,16 @@ void BLDC_main(void){
 //		if(IRQ_Voltage_Temp_BUFF.V_Bat > 10000)SetMode(&Current_PID,  AUTOMATIC);//Limit(&LIMIT_Current, Velocity_PID.Output);
 //		else SetMode(&Current_PID,  MANUAL);
 		//SetMode(&Angle_PID,  AUTOMATIC);
-		Current_PID.Setpoint = 500;
+		Current_PID.Setpoint = 3000;
 //		Current_PID.Setpoint = Velocity_PID.Output;
 
 		if(Angle_PID.Output > 0) direction = 1;
 		else direction = -1;
 
 		#else
-		Current_PID.Setpoint = weight*(fast_sin_2((abs)((float)IRQ_Encoders_BUFF.Encoder1_pos)/1000));
-		if(IRQ_Encoders_BUFF.Encoder1_pos > 180000) direction = -1;
-		else direction = 1;
+//		Current_PID.Setpoint = weight*(fast_sin_2((abs)((float)IRQ_Encoders_BUFF.Encoder1_pos)/1000));
+//		if(IRQ_Encoders_BUFF.Encoder1_pos > 180000) direction = -1;
+//		else direction = 1;
 		#endif
 
 		Compute(&Current_PID);
@@ -492,6 +492,7 @@ void BLDC_main(void){
 //			shutoff();
 			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(1*90), test2);
 //			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(1*90), 50);
+//			inverter(0, 20);
 
 			//inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(direction*90), Current_PID.Output);
 //			inverter(0, 200);
@@ -560,7 +561,7 @@ void BLDC_main(void){
 					#endif
 					"\r\n"
 					#ifdef Current_debug
-					, Feedback.Current_M1,  Feedback.Current_M2, Feedback.Current_M3, Feedback.Current_DC, (int32_t)test
+					, Feedback.Current_M1,  Feedback.Current_M2, Feedback.Current_M3, Feedback.Current_DC, mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(1*90) //(int32_t)test
 					#endif
 					#ifdef Voltage_debug
 					, Feedback.Voltage_BAT, Feedback.Voltage_AUX
@@ -572,7 +573,7 @@ void BLDC_main(void){
 					, status_sting[Feedback.Status_mode], Feedback.Status_setpoint, Feedback.Status_warning, Feedback.Status_faults
 						#endif
 					#ifdef Position_debug
-					, Feedback.Position_Encoder1_pos, Feedback.Position_Encoder2_pos, Feedback.Position_Calculated_pos, Feedback.Position_Velocity
+					, Feedback.Position_Encoder1_pos, Feedback.Position_Encoder2_pos, Feedback.Position_Calculated_pos, Feedback.Position_Velocity/1000
 					#endif
 					); // \r only goes back not to next line!
 			#endif
@@ -600,14 +601,14 @@ void BLDC_main(void){
 
 		//-----------------update dac---------------------------
 		#ifdef DAC_DEBUG
-//		dac_value(Current_PID.Output);
-		dac_value(test);
+		dac_value(Current_PID.Output);
+//		dac_value(test/10);
 		#endif
 	}
 }
 
 int16_t mech_to_el_deg(int32_t angle_deg, int32_t offset_deg){
-	return (int16_t)((abs(((angle_deg)-offset_deg+360000)%(deg_pr_pole)))/(1000/17))%360;
+	return (int16_t)((((angle_deg)-offset_deg+360000*2)%deg_pr_pole)/(1000/17))%360;
 }
 
 //float fast_sin_2(float deg){
