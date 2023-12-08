@@ -5,5 +5,5 @@
 ../Application/BLDC_FOC.c:115:7:Update_FIR_filter	3
 ../Application/BLDC_FOC.c:242:10:check_value	4
 ../Application/BLDC_FOC.c:247:7:Limit	2
-../Application/BLDC_FOC.c:613:9:mech_to_el_deg	1
+../Application/BLDC_FOC.c:612:9:mech_to_el_deg	1
 ../Application/BLDC_FOC.c:254:6:BLDC_main	2

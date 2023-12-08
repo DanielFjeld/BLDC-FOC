@@ -155,7 +155,7 @@ void Voltage_Temp_IRQ(Voltage_Temp* ptr){
 	memcpy(&IRQ_Voltage_Temp, ptr, sizeof(Voltage_Temp));
 }
 void Encoders_IRQ(Encoders* ptr){
-	memcpy(&IRQ_Encoders, ptr, sizeof(Encoders));
+	//memcpy(&IRQ_Encoders, ptr, sizeof(Encoders));
 }
 
 //-------------------CAN RX------------------------
@@ -490,8 +490,9 @@ void BLDC_main(void){
 			uint16_t test2 = 0;
 			if(Current_PID.Output != NAN)test2 = (uint16_t)Current_PID.Output;
 //			shutoff();
-			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(1*90), test2);
-//			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(1*90), 50);
+//			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(1*90), test2);
+			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(1*90), 500);
+			dac_value(8*mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+200);
 //			inverter(0, 20);
 
 			//inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(direction*90), Current_PID.Output);
@@ -577,7 +578,15 @@ void BLDC_main(void){
 					#endif
 					); // \r only goes back not to next line!
 			#endif
+
+
 		}
+		IRQ_Encoders.Encoder1_pos += 10;
+		if(IRQ_Encoders.Encoder1_pos > 360000){
+			IRQ_Encoders.Encoder1_pos = 0;
+			HAL_GPIO_TogglePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin);
+		}
+
 
 		#ifdef RUNNING_LED_DEBUG
 		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
@@ -592,23 +601,32 @@ void BLDC_main(void){
 
 		#ifndef RUNNING_LED_DEBUG
 		#ifndef RUNNING_LED_DEBUG2
-		if(running_LED_timing >= LOOP_FREQ_KHZ*100){
-			running_LED_timing = 0;
-			HAL_GPIO_TogglePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin);
-		}
+//		if(running_LED_timing >= LOOP_FREQ_KHZ*100){
+//			running_LED_timing = 0;
+//			HAL_GPIO_TogglePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin);
+//		}
 		#endif
 		#endif
 
 		//-----------------update dac---------------------------
 		#ifdef DAC_DEBUG
-		dac_value(Current_PID.Output);
+//		dac_value(Current_PID.Output);
 //		dac_value(test/10);
 		#endif
 	}
 }
 
 int16_t mech_to_el_deg(int32_t angle_deg, int32_t offset_deg){
-	return (int16_t)((((angle_deg)-offset_deg+360000*2)%deg_pr_pole)/(1000/17))%360;
+	float temp = (float)(angle_deg-offset_deg+360000*2);
+	while (temp > 360000) temp = temp-360000;
+	while (temp > (360000/17)) temp = temp-deg_pr_pole;
+	temp = temp*17/1000;
+	while (temp > 360) temp -= 360;
+	if(temp < 0) return 0;
+	else if(temp > 360) return 360;
+	else return (int16_t)temp;
+
+//	return (int16_t)((((angle_deg)-offset_deg+360000*2)%deg_pr_pole)/(1000/17))%360;
 }
 
 //float fast_sin_2(float deg){

@@ -6,4 +6,4 @@
 ../Application/BLDC_FOC.c:242:10:check_value	5
 ../Application/BLDC_FOC.c:247:7:Limit	3
 ../Application/BLDC_FOC.c:254:6:BLDC_main	31
-../Application/BLDC_FOC.c:610:9:mech_to_el_deg	1
+../Application/BLDC_FOC.c:619:9:mech_to_el_deg	6

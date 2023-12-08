@@ -11,6 +11,9 @@
 #include "tim.h"
 #include "dma.h"
 
+
+#include "CURRENT_adc.h"
+
 //PWM setup
 #define duty_max 1499
 #define pi 3.1415926535
@@ -85,6 +88,9 @@ void inverter(int16_t angle, uint16_t voltage){
 	TIM1->CCR1 = compare_M1;
 	TIM1->CCR2 = compare_M2;
 	TIM1->CCR3 = compare_M3;
+
+	//dac_value(compare_M1);
+
 }
 void shutoff(void){
 	TIM1->CCR1 = 0;
