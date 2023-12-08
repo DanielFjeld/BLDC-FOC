@@ -87,11 +87,11 @@
 //#define Status_debug
 //#define Position_debug
 
-//#define DAC_DEBUG
+#define DAC_DEBUG
 
 //#define ZERO_GRAVITY
 float weight = 100;
-float fast_sin_2(float deg);
+//float fast_sin_2(float deg);
 
 //-------------------MISC-----------------
 uint8_t Current_Callback_flag = 0;
@@ -252,7 +252,7 @@ float Limit(CAN_LIMITS* ptr, float value){
 
 //------------------------MAIN-------------------------
 void BLDC_main(void){
-	HAL_Delay(1000);
+	HAL_Delay(100);
 	//----------------PID---------
 	SetSampleTime(&Current_PID, 40); //40us = 25kHz
 	SetTunings(&Current_PID, 0.0000005f, 0.5f, 0.0f, 1); //alva
@@ -284,7 +284,7 @@ void BLDC_main(void){
 	current_init((void*)&Current_IRQ);
 
 	//calibrate DC current offset
-	HAL_Delay(1000); //let thing settle before starting
+	//HAL_Delay(1000); //let thing settle before starting
 
 	uint16_t current_offset_averaging = 100;
 	volatile int32_t current_offset = 0;
@@ -442,9 +442,6 @@ void BLDC_main(void){
 		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 0);
 		#endif
 
-
-
-
 		Angle_PID.Input = (float)IRQ_Encoders_BUFF.Encoder1_pos + position_overflow*360000;
 		Velocity_PID.Input = (float)(abs(IRQ_Encoders_BUFF.Velocity));
 		Current_PID.Input = test;
@@ -493,14 +490,11 @@ void BLDC_main(void){
 			uint16_t test2 = 0;
 			if(Current_PID.Output != NAN)test2 = (uint16_t)Current_PID.Output;
 //			shutoff();
-//			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(1*90), test2);
-			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(1*90), 50);
-
+			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(1*90), test2);
+//			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(1*90), 50);
 
 			//inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(direction*90), Current_PID.Output);
 //			inverter(0, 200);
-
-
 
 			//inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(direction*90), (uint16_t)Current_PID.Output);
 			//inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(1*90), (uint16_t)Limit(&LIMIT_V_motor, Current_PID.Output));
@@ -613,11 +607,9 @@ void BLDC_main(void){
 }
 
 int16_t mech_to_el_deg(int32_t angle_deg, int32_t offset_deg){
-	//return (int16_t)((int32_t)((int32_t)(((int32_t)((int32_t)angle_deg)-offset_deg)%deg_pr_pole))/(deg_pr_pole/360));
 	return (int16_t)((abs(((angle_deg)-offset_deg+360000)%(deg_pr_pole)))/(1000/17))%360;
-//	return (int16_t)((((int32_t)((int32_t)19400)-offset_deg)%(deg_pr_pole))/(1000/17));
 }
 
-float fast_sin_2(float deg){
-	return (4*deg*(180-deg)/(40500 - deg*(180-deg)));
-}
+//float fast_sin_2(float deg){
+//	return (4*deg*(180-deg)/(40500 - deg*(180-deg)));
+//}

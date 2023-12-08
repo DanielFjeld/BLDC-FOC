@@ -103,8 +103,6 @@ Discarded input sections
                 0x0000000000000000       0x34 ./Application/BLDC_FOC.o
  .rodata.BLDC_main.str1.1
                 0x0000000000000000       0x34 ./Application/BLDC_FOC.o
- .text.fast_sin_2
-                0x0000000000000000       0x2c ./Application/BLDC_FOC.o
  .bss.FIR_Values
                 0x0000000000000000       0x28 ./Application/BLDC_FOC.o
  .bss.FIR_index
@@ -174,8 +172,6 @@ Discarded input sections
  .text          0x0000000000000000        0x0 ./Application/current_ADC.o
  .data          0x0000000000000000        0x0 ./Application/current_ADC.o
  .bss           0x0000000000000000        0x0 ./Application/current_ADC.o
- .text.ADC_CAL_init
-                0x0000000000000000      0x22c ./Application/current_ADC.o
  .text.voltage_temperature_init
                 0x0000000000000000       0x1c ./Application/current_ADC.o
  .text.dac_value
@@ -2035,46 +2031,46 @@ LOAD C:/ST/STM32CubeIDE_1.13.2/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.ext
                 0x0000000008000538       0x2c ./Application/BLDC_FOC.o
                 0x0000000008000538                Current_IRQ
  .text.BLDC_main
-                0x0000000008000564      0x138 ./Application/BLDC_FOC.o
+                0x0000000008000564      0x130 ./Application/BLDC_FOC.o
                 0x0000000008000564                BLDC_main
  .text.ORBIS_init
-                0x000000000800069c       0x84 ./Application/Encoders_SPI.o
-                0x000000000800069c                ORBIS_init
+                0x0000000008000694       0x84 ./Application/Encoders_SPI.o
+                0x0000000008000694                ORBIS_init
  .text.HAL_SPI_TxRxCpltCallback
-                0x0000000008000720      0x12c ./Application/Encoders_SPI.o
-                0x0000000008000720                HAL_SPI_TxRxCpltCallback
+                0x0000000008000718      0x12c ./Application/Encoders_SPI.o
+                0x0000000008000718                HAL_SPI_TxRxCpltCallback
  .text.HAL_TIM_PeriodElapsedCallback
-                0x000000000800084c       0x54 ./Application/Encoders_SPI.o
-                0x000000000800084c                HAL_TIM_PeriodElapsedCallback
+                0x0000000008000844       0x54 ./Application/Encoders_SPI.o
+                0x0000000008000844                HAL_TIM_PeriodElapsedCallback
  .text.SetTunings
-                0x00000000080008a0       0xc4 ./Application/PID.o
-                0x00000000080008a0                SetTunings
+                0x0000000008000898       0xc4 ./Application/PID.o
+                0x0000000008000898                SetTunings
  .text.SetSampleTime
-                0x0000000008000964       0x34 ./Application/PID.o
-                0x0000000008000964                SetSampleTime
+                0x000000000800095c       0x34 ./Application/PID.o
+                0x000000000800095c                SetSampleTime
  .text.SetOutputLimits
-                0x0000000008000998       0x58 ./Application/PID.o
-                0x0000000008000998                SetOutputLimits
+                0x0000000008000990       0x58 ./Application/PID.o
+                0x0000000008000990                SetOutputLimits
  .text.Initialize
-                0x00000000080009f0       0x30 ./Application/PID.o
-                0x00000000080009f0                Initialize
- .text.SetMode  0x0000000008000a20       0x22 ./Application/PID.o
-                0x0000000008000a20                SetMode
+                0x00000000080009e8       0x30 ./Application/PID.o
+                0x00000000080009e8                Initialize
+ .text.SetMode  0x0000000008000a18       0x22 ./Application/PID.o
+                0x0000000008000a18                SetMode
  .text.SetControllerDirection
-                0x0000000008000a42        0x4 ./Application/PID.o
-                0x0000000008000a42                SetControllerDirection
- *fill*         0x0000000008000a46        0x2 
- .text.ADC_CAL  0x0000000008000a48       0xbc ./Application/current_ADC.o
-                0x0000000008000a48                ADC_CAL
+                0x0000000008000a3a        0x4 ./Application/PID.o
+                0x0000000008000a3a                SetControllerDirection
+ *fill*         0x0000000008000a3e        0x2 
+ .text.ADC_CAL  0x0000000008000a40       0xbc ./Application/current_ADC.o
+                0x0000000008000a40                ADC_CAL
  .text.current_init
-                0x0000000008000b04       0x28 ./Application/current_ADC.o
-                0x0000000008000b04                current_init
+                0x0000000008000afc       0x28 ./Application/current_ADC.o
+                0x0000000008000afc                current_init
  .text.HAL_ADC_ConvHalfCpltCallback
-                0x0000000008000b2c      0x188 ./Application/current_ADC.o
-                0x0000000008000b2c                HAL_ADC_ConvHalfCpltCallback
+                0x0000000008000b24      0x184 ./Application/current_ADC.o
+                0x0000000008000b24                HAL_ADC_ConvHalfCpltCallback
  .text.HAL_ADC_ConvCpltCallback
-                0x0000000008000cb4      0x178 ./Application/current_ADC.o
-                0x0000000008000cb4                HAL_ADC_ConvCpltCallback
+                0x0000000008000ca8      0x184 ./Application/current_ADC.o
+                0x0000000008000ca8                HAL_ADC_ConvCpltCallback
  .text.HAL_FDCAN_RxFifo0Callback
                 0x0000000008000e2c       0x40 ./Application/fdcandriver.o
                 0x0000000008000e2c                HAL_FDCAN_RxFifo0Callback

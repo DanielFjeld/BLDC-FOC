@@ -6,5 +6,4 @@
 ../Application/BLDC_FOC.c:242:10:check_value	16	static
 ../Application/BLDC_FOC.c:247:7:Limit	16	static
 ../Application/BLDC_FOC.c:254:6:BLDC_main	928	static
-../Application/BLDC_FOC.c:615:9:mech_to_el_deg	16	static
-../Application/BLDC_FOC.c:621:7:fast_sin_2	16	static
+../Application/BLDC_FOC.c:609:9:mech_to_el_deg	16	static

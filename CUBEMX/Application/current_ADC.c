@@ -65,6 +65,10 @@ void current_init(Current_Callback __IRQ_callback){
 	Curent_IRQ_callback = __IRQ_callback;
 
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_result_DMA, number_of_channels*2);
+
+
+	HAL_DAC_Init(&hdac1);
+	HAL_DAC_Start(&hdac1, DAC1_CHANNEL_1);
 }
 void voltage_temperature_init(VT_Callback __IRQ_callback){
 	VT_IRQ_callback = __IRQ_callback;
@@ -74,12 +78,15 @@ void voltage_temperature_init(VT_Callback __IRQ_callback){
 
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
 	if (hadc == &hadc1){
-		VDDA = (int16_t)3000*(*vrefint)/(adc_result_DMA[3]/number_of_oversample);
-		data.Current_M1 = -(int32_t)(((((int32_t)adc_result_DMA[2]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[0])*50;
-		data.Current_M2 = -(int32_t)(((((int32_t)adc_result_DMA[1]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[1])*50;
-		data.Current_M3 = -(int32_t)(((((int32_t)adc_result_DMA[0]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[2])*50;
-		data.Current_DC = ((abs((int)data.Current_M1)+abs((int)data.Current_M2)+abs((int)data.Current_M3))/2);
-		Curent_IRQ_callback(&data);
+		if(calibrating)ADC_CAL();
+		else {
+			VDDA = (int16_t)3000*(*vrefint)/(adc_result_DMA[3]/number_of_oversample);
+			data.Current_M1 = -(int32_t)(((((int32_t)adc_result_DMA[2]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[0])*50;
+			data.Current_M2 = -(int32_t)(((((int32_t)adc_result_DMA[1]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[1])*50;
+			data.Current_M3 = -(int32_t)(((((int32_t)adc_result_DMA[0]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[2])*50;
+			data.Current_DC = ((abs((int)data.Current_M1)+abs((int)data.Current_M2)+abs((int)data.Current_M3))/2);
+			Curent_IRQ_callback(&data);
+		}
 	}
 	if (hadc == &hadc2){
 		VT_data.Temp_NTC1 = (VT_adc_result_DMA[0]/number_of_VT_oversample*VDDA)/ADC_RES;
@@ -88,10 +95,9 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
 		VT_data.V_aux = (VT_adc_result_DMA[3]/number_of_VT_oversample*VDDA*57)/ADC_RES/10;
 		VT_IRQ_callback(&VT_data);
 	}
-	if(calibrating)ADC_CAL();
 }
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc){
-	if (hadc == &hadc1){
+	if (hadc == &hadc1 && !calibrating){
 		VDDA = (int16_t)3000*(*vrefint)/(adc_result_DMA[7]/number_of_oversample);
 		data.Current_M1 = -(int32_t)(((((int32_t)adc_result_DMA[6]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[0])*50;
 		data.Current_M2 = -(int32_t)(((((int32_t)adc_result_DMA[5]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[1])*50;
