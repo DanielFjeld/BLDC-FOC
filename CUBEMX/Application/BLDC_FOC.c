@@ -205,7 +205,7 @@ CAN_LIMITS LIMIT_V_BAT = {
 };
 CAN_LIMITS LIMIT_V_AUX = {
 	.max_error = 18000,
-	.min_error = 9000,
+	.min_error = 8000,
 	.max_warning = 16000,
 	.min_warning = 9000,
 	.max = NAN,
@@ -284,7 +284,7 @@ void BLDC_main(void){
 	current_init((void*)&Current_IRQ);
 
 	//calibrate DC current offset
-	HAL_Delay(100); //let thing settle before starting
+	HAL_Delay(1000); //let thing settle before starting
 
 	uint16_t current_offset_averaging = 100;
 	volatile int32_t current_offset = 0;
