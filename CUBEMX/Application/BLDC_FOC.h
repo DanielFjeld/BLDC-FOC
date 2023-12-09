@@ -28,7 +28,7 @@
 
 	//------MOTOR PARAM-----------------
 	#define polepairs 17
-	#define offset 119465
+	#define offset 0//174506
 	#define deg_pr_pole 360000/polepairs
 	//-----------------------------------------------------
 

@@ -89,7 +89,7 @@ void inverter(int16_t angle, uint16_t voltage){
 	TIM1->CCR2 = compare_M2;
 	TIM1->CCR3 = compare_M3;
 
-	//dac_value(compare_M1);
+//	dac_value(angle*8+200);
 
 }
 void shutoff(void){

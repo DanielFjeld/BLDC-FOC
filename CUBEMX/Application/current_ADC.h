@@ -28,4 +28,6 @@
 	void voltage_temperature_init(VT_Callback __IRQ_callback);
 	void dac_value(uint16_t V_dac);
 
+	float calculate_vector_sum(float current_A, float current_B, float current_C);
+
 #endif /* CURRENT_ADC_H_ */

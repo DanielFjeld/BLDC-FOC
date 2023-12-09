@@ -5,6 +5,7 @@
  *      Author: Daniel
  */
 #include "main.h"
+#include "math.h"
 #include <stdlib.h>
 #include "current_ADC.h"
 #include "adc.h"
@@ -44,6 +45,49 @@ Voltage_Temp VT_data;
 
 uint16_t calibrating = 0;
 volatile uint32_t Voltage_offset_temp[3] = {0};
+
+void dac_value(uint16_t V_dac){
+	uint16_t dac_value = ((V_dac*ADC_RES)/VDDA);
+	HAL_DAC_SetValue(&hdac1, DAC1_CHANNEL_1, DAC_ALIGN_12B_R, dac_value);
+}
+
+// Function to convert polar to rectangular
+typedef struct {
+    float real;
+    float imag;
+} Complex;
+
+Complex polar_to_rectangular(float magnitude, float angle_deg) {
+    Complex result;
+    float angle_rad = angle_deg * (3.14159264 / 180.0); // Convert angle to radians
+    result.real = magnitude * cos(angle_rad);
+    result.imag = magnitude * sin(angle_rad);
+    return result;
+}
+
+// Function to add two complex numbers
+Complex add_complex(Complex a, Complex b) {
+    Complex result;
+    result.real = a.real + b.real;
+    result.imag = a.imag + b.imag;
+    return result;
+}
+
+// Function to calculate vector sum
+float calculate_vector_sum(float current_A, float current_B, float current_C) {
+    // Convert each current to a phasor (complex number)
+    Complex phasor_A = polar_to_rectangular(current_A, 0);       // Phase A - 0 degrees
+    Complex phasor_B = polar_to_rectangular(current_B, -120);    // Phase B - 120 degrees
+    Complex phasor_C = polar_to_rectangular(current_C, 120);     // Phase C - 240 degrees
+
+    // Sum the phasors
+    Complex sum = add_complex(add_complex(phasor_A, phasor_B), phasor_C);
+
+    // Calculate the magnitude of the vector sum
+    float magnitude = sqrt(sum.real * sum.real + sum.imag * sum.imag);
+    return magnitude;
+}
+
 void ADC_CAL(){
 	VDDA = (int16_t)3000*(*vrefint)/(adc_result_DMA[3]/number_of_oversample);
 	Voltage_offset_temp[0] += (int32_t)((adc_result_DMA[2]/number_of_oversample*VDDA)/4095)*153/100; //*153/100
@@ -84,7 +128,7 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
 			data.Current_M1 = -(int32_t)(((((int32_t)adc_result_DMA[2]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[0])*50;
 			data.Current_M2 = -(int32_t)(((((int32_t)adc_result_DMA[1]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[1])*50;
 			data.Current_M3 = -(int32_t)(((((int32_t)adc_result_DMA[0]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[2])*50;
-			data.Current_DC = ((abs((int)data.Current_M1)+abs((int)data.Current_M2)+abs((int)data.Current_M3))/2);
+			data.Current_DC = sqrt(data.Current_M1*data.Current_M1 + data.Current_M2*data.Current_M2 + data.Current_M3*data.Current_M3);//(int32_t)((abs((int)data.Current_M1)+abs((int)data.Current_M2)+abs((int)data.Current_M3))/2);
 			Curent_IRQ_callback(&data);
 		}
 	}
@@ -102,7 +146,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc){
 		data.Current_M1 = -(int32_t)(((((int32_t)adc_result_DMA[6]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[0])*50;
 		data.Current_M2 = -(int32_t)(((((int32_t)adc_result_DMA[5]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[1])*50;
 		data.Current_M3 = -(int32_t)(((((int32_t)adc_result_DMA[4]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[2])*50;
-		data.Current_DC = ((abs((int)data.Current_M1)+abs((int)data.Current_M2)+abs((int)data.Current_M3))/2);
+//		data.Current_DC = ((abs((int)data.Current_M1)+abs((int)data.Current_M2)+abs((int)data.Current_M3))/2);
 		Curent_IRQ_callback(&data);
 	}
 	if (hadc == &hadc2){
@@ -112,9 +156,4 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc){
 		VT_data.V_aux = (VT_adc_result_DMA[7]/number_of_VT_oversample*VDDA*57)/ADC_RES/10;
 		VT_IRQ_callback(&VT_data);
 	}
-}
-
-void dac_value(uint16_t V_dac){
-	uint16_t dac_value = ((V_dac*ADC_RES)/VDDA);
-	HAL_DAC_SetValue(&hdac1, DAC1_CHANNEL_1, DAC_ALIGN_12B_R, dac_value);
 }
