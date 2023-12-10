@@ -30,4 +30,6 @@
 
 	float calculate_vector_sum(float current_A, float current_B, float current_C);
 
+	void dq0(float theta, float a, float b, float c, float *d, float *q);
+
 #endif /* CURRENT_ADC_H_ */

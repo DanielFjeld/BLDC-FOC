@@ -75,6 +75,8 @@
 #include "Encoders_SPI.h"
 #include "print_server.h"
 
+#include "Calibration.h"
+
 #define LOOP_FREQ_KHZ 30
 
 //#define RUNNING_LED_DEBUG
@@ -289,6 +291,8 @@ void BLDC_main(void){
 	//calibrate DC current offset
 	//HAL_Delay(1000); //let thing settle before starting
 
+
+
 	uint16_t current_offset_averaging = 100;
 	volatile int32_t current_offset = 0;
 	while (current_offset_averaging){
@@ -319,6 +323,38 @@ void BLDC_main(void){
 
 	//--------------setup PWM------------------
 	CTRL_init_PWM();
+
+	order_phases(&IRQ_Encoders, &IRQ_Current);
+	calibrate(&IRQ_Encoders, &IRQ_Current);
+
+	uint32_t test_encoder;
+
+	float differance = 0;
+	for (int i = 0; i < (SIZE*NPP); i++){
+		differance += error_filt[i];
+	}
+	differance = differance/(SIZE*NPP);
+
+	while(1){
+		int16_t index_error = (int16_t)(IRQ_Encoders.Encoder1_pos/1000);// - electrical_offset);
+		if (index_error >= 360)index_error -= 360;
+		if (index_error < 0)index_error += 360;
+
+		uint16_t index_error2 = (index_error*(SIZE*NPP))/360;
+		if (index_error2 >= (SIZE*NPP))index_error2 -= (SIZE*NPP);
+		PrintServerPrintf("%d  %.4f  %d  %d\n\r"
+				, index_error
+				, (error_filt[index_error2] - differance)
+				, IRQ_Encoders.Encoder1_pos
+				, mech_to_el_deg((motor_lut[index_error]*360000)/(SIZE*NPP), 0));
+		test_encoder = mech_to_el_deg(motor_lut[index_error], 0)+(0*90);
+		//inverter(test_encoder, 100);
+		HAL_Delay(10);
+//- differance
+		inverter(mech_to_el_deg(IRQ_Encoders.Encoder1_pos - (int32_t)((error_filt[index_error2] )*1000), (uint32_t)(electrical_offset*1000))+(0*90), 100);
+
+
+	} //16*17 *
 
 	HAL_Delay(100); //let thing settle before starting
 
@@ -491,7 +527,6 @@ void BLDC_main(void){
 		if(IRQ_Encoders_BUFF.Encoder1_pos > 360000){
 			IRQ_Encoders_BUFF.Encoder1_pos = 0;
 			HAL_GPIO_TogglePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin);
-
 		}
 		IRQ_Encoders_BUFF.Encoder2_pos = 0;
 		#endif

@@ -76,6 +76,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi)
 		HAL_GPIO_WritePin(ENCODER1_CS_GPIO_Port, ENCODER1_CS_Pin, 1);
 		data_encoders.Calculated_pos = SPI1_rx_buff[0]; //(SPI1_rx_buff[3] << 8) | (SPI1_rx_buff[2]);
 		data_encoders.Encoder1_pos = (uint32_t)(((uint32_t)(SPI1_rx_buff[0] << 6) | (SPI1_rx_buff[1] >> 2)) * 5625) >> 8;
+		data_encoders.Encoder1_pos_raw = (uint32_t)(SPI1_rx_buff[0] << 6) | (SPI1_rx_buff[1] >> 2);
 //		data_encoders.Encoder1_pos += 90000;
 //		data_encoders.Encoder1_pos = data_encoders.Encoder1_pos %360000;
 

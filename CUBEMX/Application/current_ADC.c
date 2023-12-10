@@ -157,3 +157,21 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc){
 		VT_IRQ_callback(&VT_data);
 	}
 }
+
+//sin(θ◦) ≈ 4θ(180 − θ) 40500 − θ(180 − θ);
+//float _sin(float deg){
+//	return (4*deg*(180-deg)/(40500 - deg*(180-deg)));
+//}
+
+void dq0(float theta, float a, float b, float c, float *d, float *q){
+    /// DQ0 Transform ///
+    ///Phase current amplitude = lengh of dq vector///
+    ///i.e. iq = 1, id = 0, peak phase current of 1///
+
+    float cf = cos(theta);
+    float sf = sin(theta);
+
+    *d = 0.6666667f*(cf*a + (0.86602540378f*sf-.5f*cf)*b + (-0.86602540378f*sf-.5f*cf)*c);   ///Faster DQ0 Transform
+    *q = 0.6666667f*(-sf*a - (-0.86602540378f*cf-.5f*sf)*b - (0.86602540378f*cf-.5f*sf)*c);
+
+    }
