@@ -1,3 +1,5 @@
-../Application/Flash.c:30:6:Flash_init	4	static
-../Application/Flash.c:34:6:Flash_save	16	static
-../Application/Flash.c:38:8:Flash_get_values	4	static
+../Application/Flash.c:39:10:flash_read	16	static
+../Application/Flash.c:43:6:flash_write	56	static
+../Application/Flash.c:71:6:Flash_init	4	static
+../Application/Flash.c:75:6:Flash_save	16	static
+../Application/Flash.c:80:8:Flash_get_values	8	static

@@ -23,6 +23,8 @@
 #define number_of_channels 4
 #define number_of_VT_channels 4
 
+#define pi 3.14159264f
+
 //DMA data
 volatile uint32_t adc_result_DMA[number_of_channels*2]; //current
 volatile uint32_t VT_adc_result_DMA[number_of_VT_channels*2]; //voltage temperature
@@ -173,8 +175,8 @@ void dq0(float theta, float a, float b, float c, float *d, float *q){
     ///i.e. iq = 1, id = 0, peak phase current of 1///
 
 //	uint32_t temp = (int32_t)(90.0f-theta*180/3.14159264f+2*360)%360;
-//    float cf = sin3((float)temp);
-//    float sf = sin3(theta*180.0f/3.14159264f);
+//    float cf = sin3((float)temp)*pi/180.0f;
+//    float sf = sin3((theta)*180.0f/pi)*pi/180.0f;
 
 	float cf = cos(theta);
 	float sf = sin(theta);

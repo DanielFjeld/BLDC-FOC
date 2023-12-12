@@ -6,5 +6,7 @@
 ../Application/BLDC_FOC.c:183:6:Can_RX_Status_IRQ	16	static
 ../Application/BLDC_FOC.c:263:10:check_value	16	static
 ../Application/BLDC_FOC.c:268:7:Limit	16	static
-../Application/BLDC_FOC.c:322:6:BLDC_main	1040	static
-../Application/BLDC_FOC.c:780:9:mech_to_el_deg	24	static
+../Application/BLDC_FOC.c:274:10:sqrtI	32	static
+../Application/BLDC_FOC.c:293:7:atan2_approximation2	24	static
+../Application/BLDC_FOC.c:322:6:BLDC_main	888	static
+../Application/BLDC_FOC.c:791:9:mech_to_el_deg	24	static

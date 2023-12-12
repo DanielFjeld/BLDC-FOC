@@ -7,6 +7,8 @@
 
 #ifndef FLASH_H_
 #define FLASH_H_
+	#include <stdlib.h>
+	#include "main.h"
 
 	typedef struct Flash{
 		float Angle_kp;
@@ -21,6 +23,8 @@
 		float Current_offset_kp;
 		float Current_offset_ki;
 		float Current_offset_kd;
+		uint32_t Current_limit;
+		uint32_t Velocity_limit;
 	}Flash;
 
 	void Flash_init();

@@ -85,10 +85,10 @@
 #define PRINT_DEBUG
 
 #define Current_debug
-//#define Voltage_debug
+#define Voltage_debug
 //#define Temperature_debug
 //#define Status_debug
-#define Position_debug
+//#define Position_debug
 
 #define DAC_DEBUG
 
@@ -271,51 +271,51 @@ float Limit(CAN_LIMITS* ptr, float value){
 	return value;
 }
 
-//uint32_t sqrtI(uint32_t sqrtArg)
-//{
-//uint32_t answer, x;
-//uint32_t temp;
-//if ( sqrtArg == 0 ) return 0; // undefined result
-//if ( sqrtArg == 1 ) return 1; // identity
-//answer = 0; // integer square root
-//for( x=0x8000; x>0; x=x>>1 )
-//{ // 16 bit shift
-//answer |= x; // possible bit in root
-//temp = answer * answer; // fast unsigned multiply
-//if (temp == sqrtArg) break; // exact, found it
-//if (temp > sqrtArg) answer ^= x; // too large, reverse bit
-//}
-//return answer; // approximate root
-//}
-//#define PI_FLOAT     3.14159265f
-//#define PIBY2_FLOAT  1.5707963f
-//// |error| < 0.005
-//float atan2_approximation2( float y, float x )
-//{
-//	if ( x == 0.0f )
-//	{
-//		if ( y > 0.0f ) return PIBY2_FLOAT;
-//		if ( y == 0.0f ) return 0.0f;
-//		return -PIBY2_FLOAT;
-//	}
-//	float atan;
-//	float z = y/x;
-//	if ( abs( z ) < 1.0f )
-//	{
-//		atan = z/(1.0f + 0.28f*z*z);
-//		if ( x < 0.0f )
-//		{
-//			if ( y < 0.0f ) return atan - PI_FLOAT;
-//			return atan + PI_FLOAT;
-//		}
-//	}
-//	else
-//	{
-//		atan = PIBY2_FLOAT - z/(z*z + 0.28f);
-//		if ( y < 0.0f ) return atan - PI_FLOAT;
-//	}
-//	return atan;
-//}
+uint32_t sqrtI(uint32_t sqrtArg)
+{
+uint32_t answer, x;
+uint32_t temp;
+if ( sqrtArg == 0 ) return 0; // undefined result
+if ( sqrtArg == 1 ) return 1; // identity
+answer = 0; // integer square root
+for( x=0x8000; x>0; x=x>>1 )
+{ // 16 bit shift
+answer |= x; // possible bit in root
+temp = answer * answer; // fast unsigned multiply
+if (temp == sqrtArg) break; // exact, found it
+if (temp > sqrtArg) answer ^= x; // too large, reverse bit
+}
+return answer; // approximate root
+}
+#define PI_FLOAT     3.14159265f
+#define PIBY2_FLOAT  1.5707963f
+// |error| < 0.005
+float atan2_approximation2( float y, float x )
+{
+	if ( x == 0.0f )
+	{
+		if ( y > 0.0f ) return PIBY2_FLOAT;
+		if ( y == 0.0f ) return 0.0f;
+		return -PIBY2_FLOAT;
+	}
+	float atan;
+	float z = y/x;
+	if ( fabs( z ) < 1.0f )
+	{
+		atan = z/(1.0f + 0.28f*z*z);
+		if ( x < 0.0f )
+		{
+			if ( y < 0.0f ) return atan - PI_FLOAT;
+			return atan + PI_FLOAT;
+		}
+	}
+	else
+	{
+		atan = PIBY2_FLOAT - z/(z*z + 0.28f);
+		if ( y < 0.0f ) return atan - PI_FLOAT;
+	}
+	return atan;
+}
 
 //------------------------MAIN-------------------------
 Flash *storage;
@@ -323,6 +323,17 @@ void BLDC_main(void){
 
 	Flash_init();
 	storage = Flash_get_values();
+	uint32_t *ptr_test = (uint32_t*)Flash_get_values();
+
+
+	PrintServerPrintf("\n\rE 0x%x 0x%x\n\r", ptr_test[0], ptr_test);
+	//
+	HAL_Delay(10);
+	Flash_save(NULL);
+
+	PrintServerPrintf("\n\rA 0x%x 0x%x\n\r", ptr_test[0], ptr_test);
+
+	while(1);
 
 	HAL_Delay(100);
 	//----------------PID---------
@@ -336,7 +347,7 @@ void BLDC_main(void){
 
 	SetSampleTime(&Velocity_PID, 100); //100s = 10kHz
 	SetTunings(&Velocity_PID, storage->Velocity_kp, storage->Velocity_ki, storage->Velocity_kd, 1);
-	SetOutputLimits(&Velocity_PID, -5000, 5000);
+	SetOutputLimits(&Velocity_PID, -(storage->Current_limit*1000.0f), (storage->Current_limit*1000.0f));
 	SetControllerDirection(&Velocity_PID, DIRECT);
 	SetMode(&Velocity_PID,  AUTOMATIC);
 	Initialize(&Velocity_PID);
@@ -344,7 +355,7 @@ void BLDC_main(void){
 
 	SetSampleTime(&Angle_PID, 100); //100s = 10kHz
 	SetTunings(&Angle_PID, storage->Angle_kp, storage->Angle_ki, storage->Angle_kd, 1);
-	SetOutputLimits(&Angle_PID, -4000000, 4000000);
+	SetOutputLimits(&Angle_PID, -(storage->Velocity_limit*1000.0f), (storage->Velocity_limit*1000.0f));
 	SetControllerDirection(&Angle_PID, DIRECT);
 	SetMode(&Angle_PID,  AUTOMATIC);
 	Initialize(&Angle_PID);
@@ -548,7 +559,7 @@ void BLDC_main(void){
 		float q;
 		int16_t angle = (mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, 0) + error_pos + (int32_t)electrical_offset + 2*360)%360;
 		dq0((float)angle*3.14159264f/180, (float)IRQ_Current_BUFF.Current_M2, (float)IRQ_Current_BUFF.Current_M3, (float)IRQ_Current_BUFF.Current_M1, &d, &q);
-		IRQ_Current_BUFF.Current_DC = (int32_t)sqrt((d*d + q*q));
+//		IRQ_Current_BUFF.Current_DC = (int32_t)sqrt((d*d + q*q));
 		float q_lpf = Update_FIR_filter(q);
 		float d_lpf = Update_FIR_filter2(d);
 
@@ -618,10 +629,10 @@ void BLDC_main(void){
 		float V_d = Current_PID_offset.Output;
 		float V_q = Current_PID.Output;
 		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
-//		float theta = atan2_approximation2(V_q, V_d)*180.0f/3.14159264f;
-		float theta = atan2(V_q, V_d)*180/3.14159264f;
-		uint32_t mag = (uint32_t)(sqrt(V_q*V_q+V_d*V_d));
-//		uint32_t mag = sqrtI((uint32_t)(V_q*V_q+V_d*V_d));
+		float theta = atan2_approximation2(V_q, V_d)*180.0f/3.14159264f;
+//		float theta = atan2(V_q, V_d)*180/3.14159264f;
+//		uint32_t mag = (uint32_t)(sqrt(V_q*V_q+V_d*V_d));
+		uint32_t mag = sqrtI((uint32_t)(V_q*V_q+V_d*V_d));
 		mag *= 0.7;
 		if (mag > 1499)mag = 1499;
 
