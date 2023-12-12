@@ -1,3 +1,2 @@
 ../Application/Calibration.c:38:6:order_phases	88	static
-../Application/Calibration.c:90:6:calibrate	1448	dynamic
-../Application/Calibration.c:225:10:find_closest	40	static
+../Application/Calibration.c:92:6:calibrate	336	dynamic

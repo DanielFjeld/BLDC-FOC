@@ -7,4 +7,5 @@
 ../Application/current_ADC.c:117:6:voltage_temperature_init	16	static
 ../Application/current_ADC.c:123:6:HAL_ADC_ConvHalfCpltCallback	16	static
 ../Application/current_ADC.c:143:6:HAL_ADC_ConvCpltCallback	16	static
-../Application/current_ADC.c:166:6:dq0	40	static
+../Application/current_ADC.c:166:7:sin3	16	static
+../Application/current_ADC.c:169:6:dq0	40	static

@@ -21,7 +21,7 @@
 
 #define CAL_DUTY 100
 
-uint32_t find_closest(float arr[], int length, float target);
+//uint32_t find_closest(float arr[], int length, float target);
 
 
 #define WINDOW_SIZE SIZE
@@ -49,7 +49,7 @@ void order_phases(Encoders *ps, Current *cs){ //, GPIOStruct *gpio, ControllerSt
 
 
     ///Set voltage angle to zero, wait for rotor position to settle
-    inverter((int16_t)theta_ref, CAL_DUTY);
+    inverter((int16_t)theta_ref, CAL_DUTY, PHASE_ORDER);
     HAL_Delay(1000);
     //float theta_start = ps->GetMechPositionFixed();                                  //get initial rotor position
     float theta_start;
@@ -65,24 +65,26 @@ void order_phases(Encoders *ps, Current *cs){ //, GPIOStruct *gpio, ControllerSt
     PrintServerPrintf("%f %f %f\n\r\n\r", d, q, current);
     /// Rotate voltage angle
     while(theta_ref < 360*2){       //rotate for 2 electrical cycles
-    	inverter((int16_t)theta_ref, CAL_DUTY);
+    	inverter((int16_t)theta_ref, CAL_DUTY, PHASE_ORDER);
     	HAL_Delay(1);
        theta_actual = (float)ps->Encoder1_pos/1000; //sample position sensor
        if(theta_ref==0){theta_start = theta_actual;}
        if(sample_counter >= 1){
            sample_counter = 0 ;
-           PrintServerPrintf("%.4f %.4f\n\r", (float)theta_ref/(NPP), theta_actual);
+           PrintServerPrintf("%.4f %.4f\n\r", (float)theta_ref, theta_actual);
         }
         sample_counter++;
        theta_ref += 1;
         }
     float theta_end = (float)ps->Encoder1_pos/1000;
     int direction = (theta_end - theta_start)>0;
+    if ((theta_end - theta_start) > 180) direction = 0;
+    if ((theta_end - theta_start) < -180) direction = 1;
     PrintServerPrintf("Theta Start:   %f    Theta End:  %f\n\r", theta_start, theta_end);
     PrintServerPrintf("Direction:  %d\n\r", direction);
     if(direction){PrintServerPrintf("Phasing correct\n\r");}
     else if(!direction){PrintServerPrintf("Phasing incorrect.  Swapping phases V and W\n\r");}
-    PHASE_ORDER = direction;
+    PHASE_ORDER = !direction;
     HAL_Delay(10);
     }
 
@@ -121,7 +123,7 @@ void calibrate(Encoders *ps, Current *cs){ //, PositionSensor *ps, GPIOStruct *g
 
 
     ///Set voltage angle to zero, wait for rotor position to settle
-    inverter((int16_t)theta_ref, CAL_DUTY);
+    inverter((int16_t)theta_ref, CAL_DUTY, PHASE_ORDER);
     HAL_Delay(1000);
 
     dq0(theta_ref*pi/180, (float)cs->Current_M1/1000, (float)cs->Current_M2/1000, (float)cs->Current_M3/1000, &d, &q);
@@ -130,7 +132,7 @@ void calibrate(Encoders *ps, Current *cs){ //, PositionSensor *ps, GPIOStruct *g
     for(int i = 0; i<n; i++){                                                   // rotate forwards
        for(int j = 0; j<n2; j++){
         theta_ref += delta;
-        inverter((int16_t)theta_ref, CAL_DUTY);
+        inverter((int16_t)theta_ref, CAL_DUTY, PHASE_ORDER);
         HAL_Delay(1);
        theta_actual = (float)ps->Encoder1_pos/1000; //fixed position
        error_f[i] = theta_ref/NPP - theta_actual;
@@ -143,7 +145,7 @@ void calibrate(Encoders *ps, Current *cs){ //, PositionSensor *ps, GPIOStruct *g
     for(int i = 0; i<n; i++){                                                   // rotate backwards
        for(int j = 0; j<n2; j++){
        theta_ref -= delta;
-       inverter((int16_t)theta_ref, CAL_DUTY);
+       inverter((int16_t)theta_ref, CAL_DUTY, PHASE_ORDER);
        HAL_Delay(1);                                                         // sample position sensor
        theta_actual = (float)ps->Encoder1_pos/1000;                                   // get mechanical position
        error_b[i] = theta_ref/NPP - theta_actual;
@@ -184,75 +186,75 @@ void calibrate(Encoders *ps, Current *cs){ //, PositionSensor *ps, GPIOStruct *g
             if(i<window){
                 cogging_current[i] = current*sinf((error[i] - error_filt[i])*NPP);
                 }
-            PrintServerPrintf("%.4f   %4f    %.4f   %.4f\n\r", error[i], error_filt[i], error_f[i], error_b[i]);
-            HAL_Delay(10);
+//            PrintServerPrintf("%.4f   %4f    %.4f   %.4f\n\r", error[i], error_filt[i], error_f[i], error_b[i]);
+//            HAL_Delay(10);
             mean += error_filt[i]/n;
             }
         int raw_offset = (raw_f[0] + raw_b[n-1])/2;                             //Insensitive to errors in this direction, so 2 points is plenty
 
 
-        PrintServerPrintf("\n\r Encoder non-linearity compensation table\n\r");
-        PrintServerPrintf("Sample Number : Lookup Index : Lookup Value\n\r\n\r");
-        for (int i = 0; i<n_lut; i++){                                          // build lookup table
-            int ind = (raw_offset>>7) + i;
-            if(ind > (n_lut-1)){
-                ind -= n_lut;
-                }
-            lut[ind] = (int) (((error_filt[i] - mean)*(float)(CPR)/(360.0f)));
-            PrintServerPrintf("%d %d %d\n\r", i, ind, lut[ind]);
-            HAL_Delay(10);
-            }
+//        PrintServerPrintf("\n\r Encoder non-linearity compensation table\n\r");
+//        PrintServerPrintf("Sample Number : Lookup Index : Lookup Value\n\r\n\r");
+//        for (int i = 0; i<n_lut; i++){                                          // build lookup table
+//            int ind = (raw_offset>>7) + i;
+//            if(ind > (n_lut-1)){
+//                ind -= n_lut;
+//                }
+//            lut[ind] = (int) (((error_filt[i] - mean)*(float)(CPR)/(360.0f)));
+//            PrintServerPrintf("%d %d %d\n\r", i, ind, lut[ind]);
+//            HAL_Delay(10);
+//            }
 
 //        ps->WriteLUT(lut);                                                      // write lookup table to position sensor object
         //memcpy(controller->cogging, cogging_current, sizeof(controller->cogging));  //compensation doesn't actually work yet....
 
 //        memcpy(&ENCODER_LUT, lut, 128*4);                                 // copy the lookup table to the flash array
         PrintServerPrintf("\n\rEncoder Electrical Offset (deg) %f\n\r",  electrical_offset);
-
-        float error_test[SIZE*NPP] = {0};
-        for(int i = 0; i < SIZE*NPP; i++){
-        	error_test[i] = error_filt[i] + i * 360.0 / (SIZE*NPP);
-        	if(error_test[i] > 360.0f)error_test[i] -= 360.0f;
-        }
-        for (int i = 0; i<LUT_SIZE; i++){
-        	float wanted_pos = i *360.0f / LUT_SIZE;
-        	motor_lut[i] = find_closest(error_test, SIZE*NPP, wanted_pos);
-        	PrintServerPrintf("%d\n\r", motor_lut[i]);
-        }
+//
+//        float error_test[SIZE*NPP] = {0};
+//        for(int i = 0; i < SIZE*NPP; i++){
+//        	error_test[i] = error_filt[i] + i * 360.0 / (SIZE*NPP);
+//        	if(error_test[i] > 360.0f)error_test[i] -= 360.0f;
+//        }
+//        for (int i = 0; i<LUT_SIZE; i++){
+//        	float wanted_pos = i *360.0f / LUT_SIZE;
+//        	motor_lut[i] = find_closest(error_test, SIZE*NPP, wanted_pos);
+//        	PrintServerPrintf("%d\n\r", motor_lut[i]);
+//        }
     }
 
 // Function to find the closest number in the array
-uint32_t find_closest(float arr[], int length, float target){
-    float smallest_diff = arr[0] - target;
-    if(smallest_diff < 0)smallest_diff = -1*smallest_diff;
-    uint32_t index = 0;
-
-    for (int i = 1; i < length; i++) {
-    	float diff;
-        diff = arr[i] - target;
-        if(diff < 0)diff = -1*diff;
-
-        if (diff < smallest_diff) {
-            smallest_diff = diff;
-            index = i;
-        }
-
-        diff = arr[i] - target - 360.0f;
-        if(diff < 0)diff = -1*diff;
-
-		if (diff < smallest_diff) {
-		smallest_diff = diff;
-		index = i;
-		}
-
-		diff = arr[i] - target + 360.0f;
-		if(diff < 0)diff = -1*diff;
-
-		if (diff < smallest_diff) {
-		  smallest_diff = diff;
-		  index = i;
-		}
-
-    }
-    return index; //(index*360000)/length;
-}
+//uint32_t find_closest(float arr[], int length, float target){
+//    float smallest_diff = arr[0] - target;
+//    if(smallest_diff < 0)smallest_diff = -1*smallest_diff;
+//    uint32_t index = 0;
+//
+//    for (int i = 1; i < length; i++) {
+//    	float diff;
+//        diff = arr[i] - target;
+//        if(diff < 0)diff = -1*diff;
+//
+//        if (diff < smallest_diff) {
+//            smallest_diff = diff;
+//            index = i;
+//        }
+//
+//        diff = arr[i] - target - 360.0f;
+//        if(diff < 0)diff = -1*diff;
+//
+//		if (diff < smallest_diff) {
+//		smallest_diff = diff;
+//		index = i;
+//		}
+//
+//		diff = arr[i] - target + 360.0f;
+//		if(diff < 0)diff = -1*diff;
+//
+//		if (diff < smallest_diff) {
+//		  smallest_diff = diff;
+//		  index = i;
+//		}
+//
+//    }
+//    return index; //(index*360000)/length;
+//}

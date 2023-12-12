@@ -40,10 +40,10 @@ void CTRL_init_PWM(void){
 //	return (4*deg*(180-deg)/(40500 - deg*(180-deg)));
 //}
 
-void inverter(int16_t angle, uint16_t voltage){
+void inverter(int16_t angle, uint16_t voltage, uint8_t direction){
 	angle = (angle+360*2)%360;
-	angle = (360 - angle);
-	angle = angle%360;
+//	angle = (360 - angle);
+//	angle = angle%360;
 	uint32_t compare_M1 = 0;
 	uint32_t compare_M2 = 0;
 	uint32_t compare_M3 = 0;
@@ -86,8 +86,15 @@ void inverter(int16_t angle, uint16_t voltage){
 		}
 //	PrintServerPrintf("OK %d %d %d %d\r\n", (uint32_t)(compare_M1), (uint32_t)(compare_M2), (uint32_t)(compare_M3), (int32_t)angle);
 	TIM1->CCR1 = compare_M1;
-	TIM1->CCR2 = compare_M2;
-	TIM1->CCR3 = compare_M3;
+	if(direction){
+		TIM1->CCR2 = compare_M3;
+		TIM1->CCR3 = compare_M2;
+	}
+	else{
+		TIM1->CCR2 = compare_M2;
+		TIM1->CCR3 = compare_M3;
+	}
+
 
 //	dac_value(angle*8+200);
 

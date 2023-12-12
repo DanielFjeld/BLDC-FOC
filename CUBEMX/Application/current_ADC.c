@@ -128,7 +128,7 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
 			data.Current_M1 = -(int32_t)(((((int32_t)adc_result_DMA[2]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[0])*50;
 			data.Current_M2 = -(int32_t)(((((int32_t)adc_result_DMA[1]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[1])*50;
 			data.Current_M3 = -(int32_t)(((((int32_t)adc_result_DMA[0]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[2])*50;
-			data.Current_DC = sqrt(data.Current_M1*data.Current_M1 + data.Current_M2*data.Current_M2 + data.Current_M3*data.Current_M3);//(int32_t)((abs((int)data.Current_M1)+abs((int)data.Current_M2)+abs((int)data.Current_M3))/2);
+			//data.Current_DC = sqrt(data.Current_M1*data.Current_M1 + data.Current_M2*data.Current_M2 + data.Current_M3*data.Current_M3);//(int32_t)((abs((int)data.Current_M1)+abs((int)data.Current_M2)+abs((int)data.Current_M3))/2);
 			Curent_IRQ_callback(&data);
 		}
 	}
@@ -162,16 +162,24 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc){
 //float _sin(float deg){
 //	return (4*deg*(180-deg)/(40500 - deg*(180-deg)));
 //}
-
+//sin(θ◦) ≈ 4θ(180 − θ) 40500 − θ(180 − θ);
+float sin3(float deg){
+	return (4*deg*(180-deg)/(40500 - deg*(180-deg)));
+}
 void dq0(float theta, float a, float b, float c, float *d, float *q){
+	//d and q are now fliped
     /// DQ0 Transform ///
     ///Phase current amplitude = lengh of dq vector///
     ///i.e. iq = 1, id = 0, peak phase current of 1///
 
-    float cf = cos(theta);
-    float sf = sin(theta);
+//	uint32_t temp = (int32_t)(90.0f-theta*180/3.14159264f+2*360)%360;
+//    float cf = sin3((float)temp);
+//    float sf = sin3(theta*180.0f/3.14159264f);
+
+	float cf = cos(theta);
+	float sf = sin(theta);
+
 
     *d = 0.6666667f*(cf*a + (0.86602540378f*sf-.5f*cf)*b + (-0.86602540378f*sf-.5f*cf)*c);   ///Faster DQ0 Transform
     *q = 0.6666667f*(-sf*a - (-0.86602540378f*cf-.5f*sf)*b - (0.86602540378f*cf-.5f*sf)*c);
-
     }

@@ -13,7 +13,7 @@
 
 //	void CTRL_init(void);
 	void CTRL_init_PWM(void);
-	void inverter(int16_t angle, uint16_t voltage);
+	void inverter(int16_t angle, uint16_t voltage, uint8_t direction);
 
 	void shutoff(void);
 	void shutdown(void);

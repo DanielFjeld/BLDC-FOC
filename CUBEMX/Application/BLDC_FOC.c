@@ -74,6 +74,7 @@
 #include "fdcandriver.h"
 #include "Encoders_SPI.h"
 #include "print_server.h"
+#include "Flash.h"
 
 #include "Calibration.h"
 
@@ -81,7 +82,7 @@
 
 //#define RUNNING_LED_DEBUG
 //#define RUNNING_LED_DEBUG2
-//#define PRINT_DEBUG
+#define PRINT_DEBUG
 
 #define Current_debug
 //#define Voltage_debug
@@ -91,7 +92,7 @@
 
 #define DAC_DEBUG
 
-#define CALIBRATION
+//#define CALIBRATION
 int32_t test_val = 0;
 
 //#define ZERO_GRAVITY
@@ -119,13 +120,30 @@ uint8_t FIR_index = 0;
 float FIR_Values[FIR_FILTER_LENGTH] = {0};
 float Update_FIR_filter(float input){
 	FIR_Values[FIR_index] = input;
-	float temp = 0;
+	float temp = 0.0f;
 	for(int i = 0; i < FIR_FILTER_LENGTH; i++){
 		temp += FIR_INPULSE_RESPONSE[i]*FIR_Values[i];
 	}
 	if(FIR_index < FIR_FILTER_LENGTH-1)FIR_index++;
 	else FIR_index = 0;
 	return temp;
+}
+
+#define FIR_FILTER_LENGTH2 100
+uint8_t FIR_index2 = 0;
+float FIR_Values2[FIR_FILTER_LENGTH2] = {0};
+float FIR2_value = 0;
+float Update_FIR_filter2(float input){
+	FIR2_value -= FIR_Values2[FIR_index];
+	FIR_Values2[FIR_index] = input/FIR_FILTER_LENGTH2;
+	FIR2_value += FIR_Values2[FIR_index] ;
+//	float temp = 0;
+//	for(int i = 0; i < FIR_FILTER_LENGTH2; i++){
+//		temp += FIR_Values2[i]/FIR_FILTER_LENGTH2;
+//	}
+	if(FIR_index2 < FIR_FILTER_LENGTH2-1)FIR_index2++;
+	else FIR_index2 = 0;
+	return FIR2_value;
 }
 
 //----------------------CAN--------------------
@@ -138,6 +156,7 @@ CAN_Feedback Feedback;
 //CAN_PID PID_Angle;
 
 //---------------------PID---------------------
+PID_instance Current_PID_offset = {0};
 PID_instance Current_PID = {0};
 PID_instance Velocity_PID = {0};
 PID_instance Angle_PID = {0};
@@ -147,10 +166,7 @@ void Current_IRQ(Current* ptr){
 	#ifdef RUNNING_LED_DEBUG2
 	HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
 	#endif
-	#ifdef RUNNING_LED_DEBUG
-	HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
-	HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 0);
-	#endif
+
 
     if(ptr != NULL)memcpy(&IRQ_Current, ptr, sizeof(Current));
     else return;
@@ -191,8 +207,8 @@ CAN_LIMITS LIMIT_Encoder_1 = {
 	.min = NAN
 };
 CAN_LIMITS LIMIT_Encoder_2 = {
-	.max_error = 100,
-	.min_error = -10,
+	.max_error = NAN,
+	.min_error = NAN,
 	.max_warning = 95,
 	.min_warning = -5,
 	.max = 90,
@@ -209,7 +225,7 @@ CAN_LIMITS LIMIT_V_BAT = {
 	.min = NAN
 };
 CAN_LIMITS LIMIT_V_AUX = {
-	.max_error = 18000,
+	.max_error = NAN, //18000,
 	.min_error = NAN,
 	.max_warning = 16000,
 	.min_warning = 9000,
@@ -217,8 +233,8 @@ CAN_LIMITS LIMIT_V_AUX = {
 	.min = NAN
 };
 CAN_LIMITS LIMIT_temp = {
-	.max_error = 40,
-	.min_error = -25,
+	.max_error = NAN,
+	.min_error = NAN,
 	.max_warning = 30,
 	.min_warning = -5,
 	.max = NAN,
@@ -255,32 +271,91 @@ float Limit(CAN_LIMITS* ptr, float value){
 	return value;
 }
 
+//uint32_t sqrtI(uint32_t sqrtArg)
+//{
+//uint32_t answer, x;
+//uint32_t temp;
+//if ( sqrtArg == 0 ) return 0; // undefined result
+//if ( sqrtArg == 1 ) return 1; // identity
+//answer = 0; // integer square root
+//for( x=0x8000; x>0; x=x>>1 )
+//{ // 16 bit shift
+//answer |= x; // possible bit in root
+//temp = answer * answer; // fast unsigned multiply
+//if (temp == sqrtArg) break; // exact, found it
+//if (temp > sqrtArg) answer ^= x; // too large, reverse bit
+//}
+//return answer; // approximate root
+//}
+//#define PI_FLOAT     3.14159265f
+//#define PIBY2_FLOAT  1.5707963f
+//// |error| < 0.005
+//float atan2_approximation2( float y, float x )
+//{
+//	if ( x == 0.0f )
+//	{
+//		if ( y > 0.0f ) return PIBY2_FLOAT;
+//		if ( y == 0.0f ) return 0.0f;
+//		return -PIBY2_FLOAT;
+//	}
+//	float atan;
+//	float z = y/x;
+//	if ( abs( z ) < 1.0f )
+//	{
+//		atan = z/(1.0f + 0.28f*z*z);
+//		if ( x < 0.0f )
+//		{
+//			if ( y < 0.0f ) return atan - PI_FLOAT;
+//			return atan + PI_FLOAT;
+//		}
+//	}
+//	else
+//	{
+//		atan = PIBY2_FLOAT - z/(z*z + 0.28f);
+//		if ( y < 0.0f ) return atan - PI_FLOAT;
+//	}
+//	return atan;
+//}
+
 //------------------------MAIN-------------------------
+Flash *storage;
 void BLDC_main(void){
+
+	Flash_init();
+	storage = Flash_get_values();
+
 	HAL_Delay(100);
 	//----------------PID---------
 	SetSampleTime(&Current_PID, 40); //40us = 25kHz
-	SetTunings(&Current_PID, 0.005f, 10.0f, 0.0f, 1); //alva
+	SetTunings(&Current_PID, storage->Current_kp, storage->Current_ki, storage->Current_kd, 1); //alva
 //	SetTunings(&Current_PID, 0.005f, 40.0f, 0.0f, 1); //gimbal
-	SetOutputLimits(&Current_PID, 0, 1499);
+	SetOutputLimits(&Current_PID, -1500, 1500);
 	SetControllerDirection(&Current_PID, DIRECT);
 	SetMode(&Current_PID,  AUTOMATIC);
 	Initialize(&Current_PID);
 
 	SetSampleTime(&Velocity_PID, 100); //100s = 10kHz
-	SetTunings(&Velocity_PID, 0.0005f, 0.03f, 0.0f, 1);
-	SetOutputLimits(&Velocity_PID, 0, 30000);
+	SetTunings(&Velocity_PID, storage->Velocity_kp, storage->Velocity_ki, storage->Velocity_kd, 1);
+	SetOutputLimits(&Velocity_PID, -5000, 5000);
 	SetControllerDirection(&Velocity_PID, DIRECT);
 	SetMode(&Velocity_PID,  AUTOMATIC);
 	Initialize(&Velocity_PID);
 
 
 	SetSampleTime(&Angle_PID, 100); //100s = 10kHz
-	SetTunings(&Angle_PID, 10.0f, 0.0f, 0.0f, 1);
+	SetTunings(&Angle_PID, storage->Angle_kp, storage->Angle_ki, storage->Angle_kd, 1);
 	SetOutputLimits(&Angle_PID, -4000000, 4000000);
 	SetControllerDirection(&Angle_PID, DIRECT);
 	SetMode(&Angle_PID,  AUTOMATIC);
 	Initialize(&Angle_PID);
+
+	SetSampleTime(&Current_PID_offset, 40); //100s = 10kHz
+	SetTunings(&Current_PID_offset, storage->Current_offset_kp, storage->Current_offset_ki, storage->Current_offset_kd, 1);
+	SetOutputLimits(&Current_PID_offset, -1500, 1500);
+	SetControllerDirection(&Current_PID_offset, DIRECT);
+	SetMode(&Current_PID_offset,  AUTOMATIC);
+	Initialize(&Current_PID_offset);
+
 
 	//setup encoder
 	ORBIS_init((void*)&Encoders_IRQ);
@@ -289,19 +364,19 @@ void BLDC_main(void){
 	current_init((void*)&Current_IRQ);
 
 	//calibrate DC current offset
-	//HAL_Delay(1000); //let thing settle before starting
+	HAL_Delay(1000); //let thing settle before starting
 
-
-
-	uint16_t current_offset_averaging = 100;
-	volatile int32_t current_offset = 0;
-	while (current_offset_averaging){
-		while(!Current_Callback_flag);
-		Current_Callback_flag = 0;
-		current_offset += IRQ_Current.Current_DC;
-		current_offset_averaging--;
-	}
-	current_offset = current_offset/100;
+//
+//
+//	uint16_t current_offset_averaging = 100;
+//	volatile int32_t current_offset = 0;
+//	while (current_offset_averaging){
+//		while(!Current_Callback_flag);
+//		Current_Callback_flag = 0;
+//		current_offset += IRQ_Current.Current_DC;
+//		current_offset_averaging--;
+//	}
+//	current_offset = current_offset/100;
 
 	//setup voltage and temperature readings
 	voltage_temperature_init((void*)&Voltage_Temp_IRQ);
@@ -327,34 +402,9 @@ void BLDC_main(void){
 	order_phases(&IRQ_Encoders, &IRQ_Current);
 	calibrate(&IRQ_Encoders, &IRQ_Current);
 
-	uint32_t test_encoder;
-
-	float differance = 0;
-	for (int i = 0; i < (SIZE*NPP); i++){
-		differance += error_filt[i];
-	}
-	differance = differance/(SIZE*NPP);
-
-	while(1){
-		int16_t index_error = (int16_t)(IRQ_Encoders.Encoder1_pos/1000);// - electrical_offset);
-		if (index_error >= 360)index_error -= 360;
-		if (index_error < 0)index_error += 360;
-
-		uint16_t index_error2 = (index_error*(SIZE*NPP))/360;
-		if (index_error2 >= (SIZE*NPP))index_error2 -= (SIZE*NPP);
-		PrintServerPrintf("%d  %.4f  %d  %d\n\r"
-				, index_error
-				, (error_filt[index_error2] - differance)
-				, IRQ_Encoders.Encoder1_pos
-				, mech_to_el_deg((motor_lut[index_error]*360000)/(SIZE*NPP), 0));
-		test_encoder = mech_to_el_deg(motor_lut[index_error], 0)+(0*90);
-		//inverter(test_encoder, 100);
-		HAL_Delay(10);
-//- differance
-		inverter(mech_to_el_deg(IRQ_Encoders.Encoder1_pos - (int32_t)((error_filt[index_error2] )*1000), (uint32_t)(electrical_offset*1000))+(0*90), 100);
-
-
-	} //16*17 *
+	int16_t index_error = (int16_t)(IRQ_Encoders.Encoder1_pos/1000)%360;// - electrical_offset);
+	uint16_t mech_offset = index_error;
+	uint16_t index_error2 = ((((index_error-mech_offset+360)%360)*(SIZE*NPP))/360)%(SIZE*NPP);
 
 	HAL_Delay(100); //let thing settle before starting
 
@@ -379,6 +429,10 @@ void BLDC_main(void){
 		while(!Current_Callback_flag);
 
 		Current_Callback_flag = 0;
+		#ifdef RUNNING_LED_DEBUG
+		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
+		//HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 0);
+		#endif
 
 		memcpy(&IRQ_Current_BUFF, &IRQ_Current, sizeof(Current));
 		memcpy(&IRQ_Voltage_Temp_BUFF, &IRQ_Voltage_Temp, sizeof(Voltage_Temp));
@@ -386,9 +440,9 @@ void BLDC_main(void){
 		memcpy(&IRQ_Encoders_BUFF, &IRQ_Encoders, sizeof(Encoders));
 		#endif
 		memcpy(&IRQ_STATUS_BUFF, &IRQ_Status, sizeof(CAN_Status));
-		IRQ_Current_BUFF.Current_DC -= current_offset;
+//		IRQ_Current_BUFF.Current_DC -= current_offset;
 
-		IRQ_Current_BUFF.Current_DC = calculate_vector_sum((float)IRQ_Current_BUFF.Current_M1, (float)IRQ_Current_BUFF.Current_M2, (float)IRQ_Current_BUFF.Current_M3); //
+//		IRQ_Current_BUFF.Current_DC = calculate_vector_sum((float)IRQ_Current_BUFF.Current_M1, (float)IRQ_Current_BUFF.Current_M2, (float)IRQ_Current_BUFF.Current_M3); //
 
 		//start calibration
 		if(Status == BLDC_STOPPED_WITH_BREAK && IRQ_STATUS_BUFF.status == INPUT_CALIBRATE_ENCODER)Status = BLDC_CALIBRATING_ENCODER;
@@ -428,9 +482,9 @@ void BLDC_main(void){
 
 		LIMITS_t Limit_callback;
 
-		Limit_callback = check_value(&LIMIT_Current, (float)IRQ_Current_BUFF.Current_DC);
-		warning |= (Limit_callback&1)      << 0; //warning
-		error   |= ((Limit_callback&2)>>1) << 0; //error
+//		Limit_callback = check_value(&LIMIT_Current, (float)IRQ_Current_BUFF.Current_DC);
+//		warning |= (Limit_callback&1)      << 0; //warning
+//		error   |= ((Limit_callback&2)>>1) << 0; //error
 
 		Limit_callback = check_value(&LIMIT_Encoder_1, (float)IRQ_Encoders_BUFF.Encoder1_pos);
 		warning |= (Limit_callback&1)      << 1; //warning
@@ -463,7 +517,7 @@ void BLDC_main(void){
 		if (Angle_PID.Input < (IRQ_STATUS_BUFF.setpoint - 20000) || Angle_PID.Input > (IRQ_STATUS_BUFF.setpoint + 20000)) warning |= (1 << 8); //warning
 
 		//-------------------RUN FIR FILTER---------------------
-		float test = Update_FIR_filter((float)(IRQ_Current_BUFF.Current_DC));
+//		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 0);
 
 		//----------------------position-----------------
 		if (last_pos > 270000 && IRQ_Encoders_BUFF.Encoder1_pos < 90000)position_overflow++;
@@ -479,21 +533,41 @@ void BLDC_main(void){
 		}
 		velocity = velocity;
 
+
 		//------------------calculate PID----------------------- 6.52us
 		#ifdef RUNNING_LED_DEBUG
 		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
 		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 0);
 		#endif
 
-		Angle_PID.Input = (float)IRQ_Encoders_BUFF.Encoder1_pos + position_overflow*360000;
-		Velocity_PID.Input = (float)(abs(IRQ_Encoders_BUFF.Velocity));
-		Current_PID.Input = test;
+		index_error = (int16_t)(IRQ_Encoders_BUFF.Encoder1_pos/1000)%360;// - electrical_offset);
+		index_error2 = ((((index_error-mech_offset+360)%360)*(SIZE*NPP))/360)%(SIZE*NPP);
+		int32_t error_pos = ((error_filt[index_error2] - error_filt[0])*17);
 
-		Angle_PID.Setpoint = (float)IRQ_STATUS_BUFF.setpoint;
+		float d;
+		float q;
+		int16_t angle = (mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, 0) + error_pos + (int32_t)electrical_offset + 2*360)%360;
+		dq0((float)angle*3.14159264f/180, (float)IRQ_Current_BUFF.Current_M2, (float)IRQ_Current_BUFF.Current_M3, (float)IRQ_Current_BUFF.Current_M1, &d, &q);
+		IRQ_Current_BUFF.Current_DC = (int32_t)sqrt((d*d + q*q));
+		float q_lpf = Update_FIR_filter(q);
+		float d_lpf = Update_FIR_filter2(d);
+
+
+
+		Angle_PID.Input = (float)IRQ_Encoders_BUFF.Encoder1_pos + position_overflow*360000.0f;
+		Velocity_PID.Input = (float)(IRQ_Encoders_BUFF.Velocity);
+		Current_PID.Input = q_lpf;
+
+
+//		Angle_PID.Setpoint = (float)IRQ_STATUS_BUFF.setpoint;
+		Angle_PID.Setpoint = 360000;
+
 		Compute(&Angle_PID);
 
-//		Velocity_PID.Setpoint = (abs(Angle_PID.Output));
-		Velocity_PID.Setpoint = 300000.0f;
+
+
+		Velocity_PID.Setpoint = Angle_PID.Output;
+//		Velocity_PID.Setpoint = -60000.0f;
 
 		Compute(&Velocity_PID);
 
@@ -502,11 +576,12 @@ void BLDC_main(void){
 //		if(IRQ_Voltage_Temp_BUFF.V_Bat > 10000)SetMode(&Current_PID,  AUTOMATIC);//Limit(&LIMIT_Current, Velocity_PID.Output);
 //		else SetMode(&Current_PID,  MANUAL);
 		//SetMode(&Angle_PID,  AUTOMATIC);
-		Current_PID.Setpoint = 3000;
-//		Current_PID.Setpoint = Velocity_PID.Output;
+//		Current_PID.Setpoint = 10000;
+		Current_PID.Setpoint = Velocity_PID.Output;
 
-		if(Angle_PID.Output > 0) direction = 1;
-		else direction = -1;
+
+//		if(Velocity_PID.Output > 0) direction = 1;
+//		else direction = -1;
 
 		#else
 //		Current_PID.Setpoint = weight*(fast_sin_2((abs)((float)IRQ_Encoders_BUFF.Encoder1_pos)/1000));
@@ -516,6 +591,13 @@ void BLDC_main(void){
 
 		Compute(&Current_PID);
 
+
+		Current_PID_offset.Setpoint = 0;
+		Current_PID_offset.Input = d_lpf;
+
+		Compute(&Current_PID_offset);
+
+
 		//-----------------set PWM--------------------- 3.12us
 		#ifdef RUNNING_LED_DEBUG
 		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
@@ -524,7 +606,7 @@ void BLDC_main(void){
 
 		#ifdef CALIBRATION
 		IRQ_Encoders_BUFF.Encoder1_pos += 30;
-		if(IRQ_Encoders_BUFF.Encoder1_pos > 360000){
+		if(IRQ_Encoders_BUFF.Encoder1_pos > 360000.0f){
 			IRQ_Encoders_BUFF.Encoder1_pos = 0;
 			HAL_GPIO_TogglePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin);
 		}
@@ -533,8 +615,17 @@ void BLDC_main(void){
 //		dac_value((IRQ_Encoders.Encoder1_pos - IRQ_Encoders_BUFF.Encoder1_pos - offset)/8 +1000);
 
 //		dac_value(IRQ_Encoders.Encoder1_pos);
+		float V_d = Current_PID_offset.Output;
+		float V_q = Current_PID.Output;
+		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
+//		float theta = atan2_approximation2(V_q, V_d)*180.0f/3.14159264f;
+		float theta = atan2(V_q, V_d)*180/3.14159264f;
+		uint32_t mag = (uint32_t)(sqrt(V_q*V_q+V_d*V_d));
+//		uint32_t mag = sqrtI((uint32_t)(V_q*V_q+V_d*V_d));
+		mag *= 0.7;
+		if (mag > 1499)mag = 1499;
 
-		uint16_t test2 = 0;
+		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 0);
 		if(error){
 			Status = BLDC_ERROR;
 			shutoff();
@@ -545,10 +636,12 @@ void BLDC_main(void){
 		}
 		else if (Status == BLDC_STOPPED_WITH_BREAK){
 
-			if(Current_PID.Output != NAN)test2 = (uint16_t)Current_PID.Output;
 //			shutoff();
 //			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(1*140), test2);
-			inverter((mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(1*90)), 100);
+			//inverter((mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(1*90)), 100);
+
+
+			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, 0)+error_pos + (int32_t)electrical_offset + (int32_t)theta/*(direction*90)*/+ 360*2, mag, PHASE_ORDER);
 //			dac_value(8*mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+200);
 //			inverter(0, 30);
 
@@ -560,7 +653,7 @@ void BLDC_main(void){
 		}
 		else if (Status == BLDC_RUNNING){
 //			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(direction*90), (uint16_t)Velocity_PID.Output);
-			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(direction*90), (uint16_t)Current_PID.Output);
+//			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(direction*90), (uint16_t)Current_PID.Output, PHASE_ORDER);
 		}
 		else if (Status == BLDC_CALIBRATING_ENCODER){
 			//inverter(0, (uint16_t)Limit(&LIMIT_V_motor, Velocity_PID.Output));
@@ -603,7 +696,7 @@ void BLDC_main(void){
 			#ifdef PRINT_DEBUG
 			PrintServerPrintf(
 					#ifdef Current_debug
-					"CURRENT[M1:%7d M2:%7d M3:%7d DC:%7d DC(FIR):%7d] "
+					"CURRENT[M1:%7d M2:%7d M3:%7d DC:%7d DC(FIR):%7d D%7d Q%7d POS %4d out %3d] "
 					#endif
 					#ifdef Voltage_debug
 					"VOLTAGE[Vbat:%5d Vaux:%5d]  "
@@ -619,7 +712,7 @@ void BLDC_main(void){
 					#endif
 					"\r\n"
 					#ifdef Current_debug
-					, Feedback.Current_M1,  Feedback.Current_M2, Feedback.Current_M3, Feedback.Current_DC, 0 // test
+					, Feedback.Current_M1,  Feedback.Current_M2, Feedback.Current_M3, Feedback.Current_DC, (int32_t)Current_PID.Output, (int16_t)d_lpf, (int16_t)q_lpf, (int16_t)theta , (int16_t)Current_PID_offset.Output // test
 					#endif
 					#ifdef Voltage_debug
 					, Feedback.Voltage_BAT, Feedback.Voltage_AUX
@@ -631,7 +724,7 @@ void BLDC_main(void){
 					, status_sting[Feedback.Status_mode], Feedback.Status_setpoint, Feedback.Status_warning, Feedback.Status_faults
 						#endif
 					#ifdef Position_debug
-					, Feedback.Position_Encoder1_pos, Feedback.Position_Encoder2_pos, IRQ_Encoders.Encoder1_pos, Feedback.Position_Velocity/1000
+					, Feedback.Position_Encoder1_pos, (int32_t)Velocity_PID.Input, Feedback.Position_Calculated_pos, Feedback.Position_Velocity/1000
 					#endif
 					); // \r only goes back not to next line!
 			#endif
@@ -664,16 +757,22 @@ void BLDC_main(void){
 		//-----------------update dac---------------------------
 		#ifdef DAC_DEBUG
 //		dac_value(Velocity_PID.Output);
-//		dac_value(IRQ_Current_BUFF.Current_DC/3);
-		dac_value(IRQ_Current_BUFF.Current_M1/20+1500);
+//		dac_value(test/3);
+//		dac_value((uint32_t)abs(IRQ_Encoders_BUFF.Velocity/1000)+1500);
+		dac_value(q/10 +1500);
 //		dac_value(test/20+1500);
 //		dac_value(abs(IRQ_Encoders.Velocity)/200);
 		#ifdef CALIBRATION
 		if (test_val == 0)test_val = IRQ_Encoders.Encoder1_pos - IRQ_Encoders_BUFF.Encoder1_pos;
 
-		PrintServerPrintf("E %d M %d test %d\n", IRQ_Encoders.Encoder1_pos, IRQ_Encoders_BUFF.Encoder1_pos, IRQ_Encoders.Encoder1_pos - IRQ_Encoders_BUFF.Encoder1_pos + test_val);
+//		PrintServerPrintf("E %d M %d test %d\n", IRQ_Encoders.Encoder1_pos, IRQ_Encoders_BUFF.Encoder1_pos, IRQ_Encoders.Encoder1_pos - IRQ_Encoders_BUFF.Encoder1_pos + test_val);
 //		HAL_Delay(100);
 		#endif
+		#endif
+
+		#ifdef RUNNING_LED_DEBUG
+		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
+		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 0);
 		#endif
 	}
 }
