@@ -98,7 +98,7 @@
 //#define Status_debug
 #define Position_debug
 
-#define CALIBRATE_ON_STARTUP
+//#define CALIBRATE_ON_STARTUP
 
 #define DAC_DEBUG
 
@@ -372,7 +372,12 @@ void BLDC_main(void){
 	electrical_offset = storage->electrical_offset;
 	PHASE_ORDER = storage->PHASE_ORDER;
 	uint16_t mech_offset = storage->mech_offset;//storage->mech_offset;
-	memcpy(error_filt, storage->error_filt,sizeof(error_filt));
+	if(mech_offset > 400)mech_offset = 0;
+	uint8_t flash_nan = 0;
+	for(int i = 0; i < sizeof(error_filt); i++){
+		if (isnan(storage->error_filt[i])) flash_nan = 1;
+	}
+	if(!flash_nan)memcpy(error_filt, storage->error_filt,sizeof(error_filt));
 
 	Current IRQ_Current_BUFF = {0};
 	Voltage_Temp IRQ_Voltage_Temp_BUFF = {0};
@@ -516,7 +521,7 @@ void BLDC_main(void){
 
 		int16_t index_error = (int16_t)(IRQ_Encoders_BUFF.Encoder1_pos/1000)%360;// - electrical_offset);
 		uint16_t index_error2 = ((((index_error-mech_offset+360)%360)*(SIZE*NPP))/360)%(SIZE*NPP);
-		int32_t error_pos = ((error_filt[index_error2] - error_filt[0])*17);
+		int32_t error_pos = ((int32_t)(error_filt[index_error2] - (int32_t)error_filt[0])*17);
 
 		float d;
 		float q;
@@ -581,7 +586,7 @@ void BLDC_main(void){
 
 		float V_d = Current_PID_offset.Output;
 		float V_q = Current_PID.Output;
-		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
+//		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
 		float theta = atan2_approximation2(V_q, V_d)*180.0f/3.14159264f;
 //		float theta = atan2(V_q, V_d)*180/3.14159264f;
 //		uint32_t mag = (uint32_t)(sqrt(V_q*V_q+V_d*V_d));
@@ -589,7 +594,7 @@ void BLDC_main(void){
 		mag *= 0.7;
 		if (mag > 1499)mag = 1499;
 
-		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 0);
+//		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 0);
 		if(error){
 			Status = BLDC_ERROR;
 			shutoff();
@@ -606,6 +611,7 @@ void BLDC_main(void){
 			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, 0)+error_pos + (int32_t)electrical_offset + (int32_t)theta + 360*2, mag, PHASE_ORDER);
 		}
 		else if (Status == BLDC_CALIBRATING_ENCODER){
+			HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
 			order_phases(&IRQ_Encoders, &IRQ_Current);
 			calibrate(&IRQ_Encoders, &IRQ_Current);
 
