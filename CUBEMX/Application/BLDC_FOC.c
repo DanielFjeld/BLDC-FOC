@@ -6,7 +6,7 @@
  */
 /*TODO:
  * OK---->Make driver for encoders (velocity and position)
- * encoder calibration (finds magnetic 0 DEG and create offset for encoder)(can be done manually)
+ * OK---->encoder calibration (finds magnetic 0 DEG and create offset for encoder)(can be done manually)
  * OK---->Read voltage and temperature (in Current.c)
  * OK---->use buffer after callback to store all values that get changed in IRQ
  * create IIR or FIR filter with built in STM hardware
@@ -81,14 +81,15 @@
 #define LOOP_FREQ_KHZ 30
 
 //#define RUNNING_LED_DEBUG
-//#define RUNNING_LED_DEBUG2
 #define PRINT_DEBUG
 
-#define Current_debug
+//#define Current_debug
 #define Voltage_debug
-//#define Temperature_debug
+#define Temperature_debug
 //#define Status_debug
 //#define Position_debug
+
+#define CALIBRATE_ON_STARTUP
 
 #define DAC_DEBUG
 
@@ -97,7 +98,6 @@ int32_t test_val = 0;
 
 //#define ZERO_GRAVITY
 float weight = 100;
-//float fast_sin_2(float deg);
 
 //-------------------MISC-----------------
 uint8_t Current_Callback_flag = 0;
@@ -320,20 +320,13 @@ float atan2_approximation2( float y, float x )
 //------------------------MAIN-------------------------
 Flash *storage;
 void BLDC_main(void){
-
 	Flash_init();
 	storage = Flash_get_values();
-	uint32_t *ptr_test = (uint32_t*)Flash_get_values();
 
 
-	PrintServerPrintf("\n\rE 0x%x 0x%x\n\r", ptr_test[0], ptr_test);
-	//
-	HAL_Delay(10);
-	Flash_save(NULL);
+	PrintServerPrintf("\n\r%s %d 0x%x\n\r",storage->ID, (uint32_t)storage->Current_limit);
 
-	PrintServerPrintf("\n\rA 0x%x 0x%x\n\r", ptr_test[0], ptr_test);
-
-	while(1);
+//	while(1);
 
 	HAL_Delay(100);
 	//----------------PID---------
@@ -374,28 +367,8 @@ void BLDC_main(void){
 	//setup current
 	current_init((void*)&Current_IRQ);
 
-	//calibrate DC current offset
-	HAL_Delay(1000); //let thing settle before starting
-
-//
-//
-//	uint16_t current_offset_averaging = 100;
-//	volatile int32_t current_offset = 0;
-//	while (current_offset_averaging){
-//		while(!Current_Callback_flag);
-//		Current_Callback_flag = 0;
-//		current_offset += IRQ_Current.Current_DC;
-//		current_offset_averaging--;
-//	}
-//	current_offset = current_offset/100;
-
 	//setup voltage and temperature readings
 	voltage_temperature_init((void*)&Voltage_Temp_IRQ);
-
-
-	//setup temperature and voltage
-	//temp_volt_init((void*)&Voltage_Temp_IRQ);
-
 	//setup CAN
 	//-----------------CAN----------------------
 	FDCAN_addCallback(&hfdcan1, (CAN_STATUS_ID << 8) 		| (CAN_DEVICE_ID << 4) | (CAN_BLDC_ID << 0), (void*)&Can_RX_Status_IRQ);
@@ -410,14 +383,11 @@ void BLDC_main(void){
 	//--------------setup PWM------------------
 	CTRL_init_PWM();
 
-	order_phases(&IRQ_Encoders, &IRQ_Current);
-	calibrate(&IRQ_Encoders, &IRQ_Current);
 
-	int16_t index_error = (int16_t)(IRQ_Encoders.Encoder1_pos/1000)%360;// - electrical_offset);
-	uint16_t mech_offset = index_error;
-	uint16_t index_error2 = ((((index_error-mech_offset+360)%360)*(SIZE*NPP))/360)%(SIZE*NPP);
-
-	HAL_Delay(100); //let thing settle before starting
+	electrical_offset = storage->electrical_offset;
+	PHASE_ORDER = storage->PHASE_ORDER;
+	uint16_t mech_offset = storage->mech_offset;//storage->mech_offset;
+	memcpy(error_filt, storage->error_filt,sizeof(error_filt));
 
 	Current IRQ_Current_BUFF = {0};
 	Voltage_Temp IRQ_Voltage_Temp_BUFF = {0};
@@ -432,6 +402,11 @@ void BLDC_main(void){
 	float velocity = 0;
 
 	int32_t position_overflow = 0;
+
+	#ifdef CALIBRATE_ON_STARTUP
+	Status = BLDC_CALIBRATING_ENCODER;
+	#endif
+
 	while(1){
 		#ifdef RUNNING_LED_DEBUG2
 		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 0);
@@ -551,8 +526,8 @@ void BLDC_main(void){
 		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 0);
 		#endif
 
-		index_error = (int16_t)(IRQ_Encoders_BUFF.Encoder1_pos/1000)%360;// - electrical_offset);
-		index_error2 = ((((index_error-mech_offset+360)%360)*(SIZE*NPP))/360)%(SIZE*NPP);
+		int16_t index_error = (int16_t)(IRQ_Encoders_BUFF.Encoder1_pos/1000)%360;// - electrical_offset);
+		uint16_t index_error2 = ((((index_error-mech_offset+360)%360)*(SIZE*NPP))/360)%(SIZE*NPP);
 		int32_t error_pos = ((error_filt[index_error2] - error_filt[0])*17);
 
 		float d;
@@ -565,7 +540,7 @@ void BLDC_main(void){
 
 
 
-		Angle_PID.Input = (float)IRQ_Encoders_BUFF.Encoder1_pos + position_overflow*360000.0f;
+		Angle_PID.Input = (float)IRQ_Encoders_BUFF.Encoder1_pos + position_overflow*360000.0f + storage->Encoder1_offset*1000.0f;
 		Velocity_PID.Input = (float)(IRQ_Encoders_BUFF.Velocity);
 		Current_PID.Input = q_lpf;
 
@@ -582,7 +557,6 @@ void BLDC_main(void){
 
 		Compute(&Velocity_PID);
 
-		int8_t direction = -1;
 		#ifndef ZERO_GRAVITY
 //		if(IRQ_Voltage_Temp_BUFF.V_Bat > 10000)SetMode(&Current_PID,  AUTOMATIC);//Limit(&LIMIT_Current, Velocity_PID.Output);
 //		else SetMode(&Current_PID,  MANUAL);
@@ -646,28 +620,23 @@ void BLDC_main(void){
 			shutdown();
 		}
 		else if (Status == BLDC_STOPPED_WITH_BREAK){
-
 //			shutoff();
-//			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(1*140), test2);
-			//inverter((mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(1*90)), 100);
-
-
-			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, 0)+error_pos + (int32_t)electrical_offset + (int32_t)theta/*(direction*90)*/+ 360*2, mag, PHASE_ORDER);
-//			dac_value(8*mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+200);
-//			inverter(0, 30);
-
-			//inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(direction*90), Current_PID.Output);
-//			inverter(0, 200);
-
-			//inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(direction*90), (uint16_t)Current_PID.Output);
-			//inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(1*90), (uint16_t)Limit(&LIMIT_V_motor, Current_PID.Output));
-		}
+			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, 0)+error_pos + (int32_t)electrical_offset + (int32_t)theta + 360*2, mag, PHASE_ORDER);
+			}
 		else if (Status == BLDC_RUNNING){
-//			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(direction*90), (uint16_t)Velocity_PID.Output);
-//			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, offset)+(direction*90), (uint16_t)Current_PID.Output, PHASE_ORDER);
+			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, 0)+error_pos + (int32_t)electrical_offset + (int32_t)theta + 360*2, mag, PHASE_ORDER);
 		}
 		else if (Status == BLDC_CALIBRATING_ENCODER){
-			//inverter(0, (uint16_t)Limit(&LIMIT_V_motor, Velocity_PID.Output));
+			order_phases(&IRQ_Encoders, &IRQ_Current);
+			calibrate(&IRQ_Encoders, &IRQ_Current);
+
+
+			//start calibration
+			storage->mech_offset = (int16_t)(IRQ_Encoders.Encoder1_pos/1000)%360;
+			storage->electrical_offset = electrical_offset;
+			storage->PHASE_ORDER = PHASE_ORDER;
+			memcpy(storage->error_filt,error_filt,sizeof(error_filt));
+			Flash_save();
 			Status = BLDC_STOPPED_WITH_BREAK;
 		}
 
@@ -693,9 +662,11 @@ void BLDC_main(void){
 			Feedback.Voltage_BAT = IRQ_Voltage_Temp_BUFF.V_Bat;
 			Feedback.Temp_NTC1 = IRQ_Voltage_Temp_BUFF.Temp_NTC1;
 			Feedback.Temp_NTC2 = IRQ_Voltage_Temp_BUFF.Temp_NTC2;
+			Feedback.Temp_ENCODER1 = IRQ_Encoders_BUFF.Encoder1_temp_x10;
+			Feedback.Temp_ENCODER2 = IRQ_Encoders_BUFF.Encoder2_temp_x10;
 
 			Feedback.Position_Encoder1_pos = IRQ_Encoders_BUFF.Encoder1_pos;
-			Feedback.Position_Encoder2_pos = 0; //IRQ_Encoders_BUFF.Encoder2_pos;
+			Feedback.Position_Encoder2_pos = IRQ_Encoders_BUFF.Encoder2_pos;
 //			Feedback.Position_Calculated_pos = IRQ_Encoders_BUFF.Calculated_pos;
 			Feedback.Position_Calculated_pos = Angle_PID.Input;
 			Feedback.Position_Velocity = IRQ_Encoders_BUFF.Velocity;
@@ -713,7 +684,7 @@ void BLDC_main(void){
 					"VOLTAGE[Vbat:%5d Vaux:%5d]  "
 					#endif
 					#ifdef Temperature_debug
-					"TEMPERATURE[NTC1:%5d NTC2:%5d]  "
+					"TEMPERATURE[NTC1:%5d NTC2:%5d ENCODER1:%5d ENCODER2:%5d]  "
 					#endif
 					#ifdef Status_debug
 					"STATUS[MODE:%s SP:%8d WARN:0x%02x ERROR:0x%02x]"
@@ -729,7 +700,7 @@ void BLDC_main(void){
 					, Feedback.Voltage_BAT, Feedback.Voltage_AUX
 					#endif
 					#ifdef Temperature_debug
-					, Feedback.Temp_NTC1, Feedback.Temp_NTC2
+					, Feedback.Temp_NTC1, Feedback.Temp_NTC2, Feedback.Temp_ENCODER1, Feedback.Temp_ENCODER2
 					#endif
 					#ifdef Status_debug
 					, status_sting[Feedback.Status_mode], Feedback.Status_setpoint, Feedback.Status_warning, Feedback.Status_faults
@@ -758,10 +729,10 @@ void BLDC_main(void){
 
 		#ifndef RUNNING_LED_DEBUG
 		#ifndef RUNNING_LED_DEBUG2
-//		if(running_LED_timing >= LOOP_FREQ_KHZ*100){
-//			running_LED_timing = 0;
-//			HAL_GPIO_TogglePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin);
-//		}
+		if(running_LED_timing >= LOOP_FREQ_KHZ*100){
+			running_LED_timing = 0;
+			HAL_GPIO_TogglePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin);
+		}
 		#endif
 		#endif
 

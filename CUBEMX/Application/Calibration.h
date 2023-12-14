@@ -17,17 +17,16 @@
 #include "current_ADC.h"
 
 	#define V_CAL 0.15f;
-	extern uint8_t PHASE_ORDER;
-	extern float electrical_offset;
-
+	#define LUT_SIZE 360
 	#define SIZE 16
 	#define NPP 17 //number of pole pairs
 	#define CPR 16384//counts per revolution
 
 
+	extern uint8_t PHASE_ORDER;
+	extern float electrical_offset;
 	extern float error_filt[SIZE*NPP];
-	#define LUT_SIZE 360
-	extern uint32_t motor_lut[LUT_SIZE];
+//	extern uint32_t motor_lut[LUT_SIZE];
 
 	void order_phases(Encoders *ps, Current *cs);
 	void calibrate(Encoders *ps, Current *cs);

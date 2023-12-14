@@ -38,6 +38,9 @@ Application/Flash.o: ../Application/Flash.c ../Application/Flash.h \
  C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_tim_ex.h \
  C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart.h \
  C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart_ex.h \
+ ../Application/Calibration.h ../Application/CTRL.h ../Core/Inc/tim.h \
+ ../Core/Inc/main.h ../Application/Encoders_SPI.h \
+ ../Application/current_ADC.h \
  C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/CMSIS/Device/ST/STM32G4xx/Include/stm32g431xx.h
 ../Application/Flash.h:
 ../Core/Inc/main.h:
@@ -79,4 +82,10 @@ C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HA
 C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_tim_ex.h:
 C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart.h:
 C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart_ex.h:
+../Application/Calibration.h:
+../Application/CTRL.h:
+../Core/Inc/tim.h:
+../Core/Inc/main.h:
+../Application/Encoders_SPI.h:
+../Application/current_ADC.h:
 C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/CMSIS/Device/ST/STM32G4xx/Include/stm32g431xx.h:

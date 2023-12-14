@@ -91,6 +91,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi)
 		if (velocity_index == velocity_lpf_size)velocity_index = 0;
 
 		data_encoders.Velocity = (int32_t)((velocity_accumulate*10000.0f*60.0f)/360.0f/velocity_lpf_size);
+		data_encoders.Encoder1_temp_x10 = (int16_t)(((uint16_t)(SPI1_rx_buff[2] << 8 | (SPI1_rx_buff[3]))));
 	}
 	if (hspi == &hspi3) {
 		HAL_GPIO_WritePin(ENCODER2_CS_GPIO_Port, ENCODER2_CS_Pin, 1);

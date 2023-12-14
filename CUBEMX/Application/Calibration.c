@@ -47,6 +47,7 @@ void order_phases(Encoders *ps, Current *cs){ //, GPIOStruct *gpio, ControllerSt
     float d;
     float q;
 
+    PHASE_ORDER = 0;
 
     ///Set voltage angle to zero, wait for rotor position to settle
     inverter((int16_t)theta_ref, CAL_DUTY, PHASE_ORDER);
