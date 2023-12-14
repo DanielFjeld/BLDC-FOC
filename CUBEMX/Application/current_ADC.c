@@ -130,12 +130,12 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
 			data.Current_M1 = -(int32_t)(((((int32_t)adc_result_DMA[2]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[0])*50;
 			data.Current_M2 = -(int32_t)(((((int32_t)adc_result_DMA[1]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[1])*50;
 			data.Current_M3 = -(int32_t)(((((int32_t)adc_result_DMA[0]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[2])*50;
-			//data.Current_DC = sqrt(data.Current_M1*data.Current_M1 + data.Current_M2*data.Current_M2 + data.Current_M3*data.Current_M3);//(int32_t)((abs((int)data.Current_M1)+abs((int)data.Current_M2)+abs((int)data.Current_M3))/2);
+//			data.Current_DC = sqrt(data.Current_M1*data.Current_M1 + data.Current_M2*data.Current_M2 + data.Current_M3*data.Current_M3);//(int32_t)((abs((int)data.Current_M1)+abs((int)data.Current_M2)+abs((int)data.Current_M3))/2);
 			Curent_IRQ_callback(&data);
 		}
 	}
 	if (hadc == &hadc2){
-		VT_data.Temp_NTC1 = (VT_adc_result_DMA[0]/number_of_VT_oversample*VDDA)/ADC_RES;
+		//VT_data.Temp_NTC1 = (VT_adc_result_DMA[0]/number_of_VT_oversample*VDDA)/ADC_RES;
 		VT_data.Temp_NTC2 = (VT_adc_result_DMA[1]/number_of_VT_oversample*VDDA)/ADC_RES;
 		VT_data.V_Bat = (VT_adc_result_DMA[2]/number_of_VT_oversample*VDDA*34)/ADC_RES;
 		VT_data.V_aux = (VT_adc_result_DMA[3]/number_of_VT_oversample*VDDA*57)/ADC_RES/10;
@@ -152,7 +152,18 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc){
 		Curent_IRQ_callback(&data);
 	}
 	if (hadc == &hadc2){
-		VT_data.Temp_NTC1 = (VT_adc_result_DMA[4]/number_of_VT_oversample*VDDA)/ADC_RES;
+//		float R1 = 50000.0f;
+//		float logR2, R2, T;
+//		float c1 = 1.009249522e-03f, c2 = 2.378405444e-04f, c3 = 2.019202697e-07f;
+//
+//		R2 = R1 * (4095.0f / (float)VT_adc_result_DMA[4]);
+//		logR2 = (float)log(R2);
+//		  T = (1.0f / (c1 + c2*logR2 + c3*logR2*logR2*logR2));
+//		  T = T - 273.15f;
+////		  T = (T * 9.0f)/ 5.0f + 32.0f;
+//		VT_data.Temp_NTC1  = (int16_t)T;
+
+		VT_data.Temp_NTC1 = 0; //(VT_adc_result_DMA[4]/number_of_VT_oversample*VDDA)/ADC_RES * ;
 		VT_data.Temp_NTC2 = (VT_adc_result_DMA[5]/number_of_VT_oversample*VDDA)/ADC_RES;
 		VT_data.V_Bat = (VT_adc_result_DMA[6]/number_of_VT_oversample*VDDA*34)/ADC_RES;
 		VT_data.V_aux = (VT_adc_result_DMA[7]/number_of_VT_oversample*VDDA*57)/ADC_RES/10;

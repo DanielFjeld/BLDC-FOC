@@ -67,10 +67,8 @@
 		float Kd;
 	}CAN_PID;
 	typedef struct CAN_LIMITS{ //if variable = NAN == Inactive
-		float min;
 		float min_warning;
 		float min_error;
-		float max;
 		float max_warning;
 		float max_error;
 	}CAN_LIMITS;

@@ -12,7 +12,7 @@
 	#define update_flag 1
 
 //	void CTRL_init(void);
-	void CTRL_init_PWM(void);
+	void CTRL_init_PWM(uint32_t *V_bat_ptr);
 	void inverter(int16_t angle, uint16_t voltage, uint8_t direction);
 
 	void shutoff(void);

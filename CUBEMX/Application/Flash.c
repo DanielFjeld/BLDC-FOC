@@ -41,7 +41,7 @@ Flash RAM = {
 		.Current_offset_kd = 0.0f,
 
 		.Velocity_limit = 4000.0f, //rpm
-		.Current_limit = 20.0f, //ampere
+		.Current_limit = 3.0f, //ampere
 
 		.Encoder1_offset = 40.000f
 };

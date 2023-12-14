@@ -17,8 +17,8 @@
 	typedef struct Voltage_Temp{
 		uint32_t V_Bat;
 		uint16_t V_aux;
-		int8_t Temp_NTC1;
-		int8_t Temp_NTC2;
+		int16_t Temp_NTC1;
+		int16_t Temp_NTC2;
 	}Voltage_Temp;
 
 	typedef void (*Current_Callback) (Current* data);

@@ -18,7 +18,10 @@
 #define duty_max 1499
 #define pi 3.1415926535
 
-void CTRL_init_PWM(void){
+uint32_t *V_bat = 0;
+
+void CTRL_init_PWM(uint32_t *V_bat_ptr){
+	V_bat = V_bat_ptr;
 	if(HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1) != HAL_OK) Error_Handler(); //error
 	if(HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1) != HAL_OK) Error_Handler(); //error
 
@@ -42,16 +45,22 @@ void CTRL_init_PWM(void){
 
 void inverter(int16_t angle, uint16_t voltage, uint8_t direction){
 	angle = (angle+360*2)%360;
-//	angle = (360 - angle);
-//	angle = angle%360;
+
+//	if(V_bat == NULL){
+//		shutoff();
+//		return;
+//	}
+	uint16_t duty = voltage; //(voltage * duty_max)/ (*V_bat);
+	if(duty > duty_max)duty = duty_max;
+
 	uint32_t compare_M1 = 0;
 	uint32_t compare_M2 = 0;
 	uint32_t compare_M3 = 0;
 
 	float deg = (float)(angle%60);
 	//uint32_t T1 = (uint32_t )(duty_max*duty*((240-4*deg)*(120-deg)/(40500 - (60-deg)*(120-deg))) ); //*pi/180
-	uint16_t T1 = (uint16_t)(voltage*(float)( 4*(60-deg)*(180-(60-deg))/(40500 - (60-deg)*(180-(60-deg))))); //*pi/180
-	uint16_t T2 = (uint16_t)(voltage*(float)(4*deg*(180-deg)/(40500 - deg*(180-deg))));
+	uint16_t T1 = (uint16_t)(duty*(float)( 4*(60-deg)*(180-(60-deg))/(40500 - (60-deg)*(180-(60-deg))))); //*pi/180
+	uint16_t T2 = (uint16_t)(duty*(float)(4*deg*(180-deg)/(40500 - deg*(180-deg))));
 	uint16_t T0 = (duty_max-T1-T2)/2;
 
 	if(angle >= 0 && angle < 60){

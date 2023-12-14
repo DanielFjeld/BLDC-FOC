@@ -5,6 +5,15 @@
  *      Author: Daniel
  */
 /*TODO:
+ * Voltage input on inverter
+ * Temp motor NTC
+ * LPF Fmac
+ * Zero voltage pause calibration
+ *
+ * Encoder/can timeout
+ * encoder CRC
+ *
+ *
  * OK---->Make driver for encoders (velocity and position)
  * OK---->encoder calibration (finds magnetic 0 DEG and create offset for encoder)(can be done manually)
  * OK---->Read voltage and temperature (in Current.c)
@@ -83,11 +92,11 @@
 //#define RUNNING_LED_DEBUG
 #define PRINT_DEBUG
 
-//#define Current_debug
-#define Voltage_debug
-#define Temperature_debug
+#define Current_debug
+//#define Voltage_debug
+//#define Temperature_debug
 //#define Status_debug
-//#define Position_debug
+#define Position_debug
 
 #define CALIBRATE_ON_STARTUP
 
@@ -137,10 +146,6 @@ float Update_FIR_filter2(float input){
 	FIR2_value -= FIR_Values2[FIR_index];
 	FIR_Values2[FIR_index] = input/FIR_FILTER_LENGTH2;
 	FIR2_value += FIR_Values2[FIR_index] ;
-//	float temp = 0;
-//	for(int i = 0; i < FIR_FILTER_LENGTH2; i++){
-//		temp += FIR_Values2[i]/FIR_FILTER_LENGTH2;
-//	}
 	if(FIR_index2 < FIR_FILTER_LENGTH2-1)FIR_index2++;
 	else FIR_index2 = 0;
 	return FIR2_value;
@@ -203,16 +208,12 @@ CAN_LIMITS LIMIT_Encoder_1 = {
 	.min_error = NAN,
 	.max_warning = NAN,
 	.min_warning = NAN,
-	.max = NAN,
-	.min = NAN
 };
 CAN_LIMITS LIMIT_Encoder_2 = {
 	.max_error = NAN,
 	.min_error = NAN,
 	.max_warning = 95,
 	.min_warning = -5,
-	.max = 90,
-	.min = 0
 };
 
 //--------------ERROR LIMITS---------------------
@@ -221,24 +222,18 @@ CAN_LIMITS LIMIT_V_BAT = {
 	.min_error = NAN,
 	.max_warning = NAN,
 	.min_warning = NAN,
-	.max = NAN,
-	.min = NAN
 };
 CAN_LIMITS LIMIT_V_AUX = {
 	.max_error = NAN, //18000,
 	.min_error = NAN,
 	.max_warning = 16000,
 	.min_warning = 9000,
-	.max = NAN,
-	.min = NAN
 };
 CAN_LIMITS LIMIT_temp = {
 	.max_error = NAN,
 	.min_error = NAN,
 	.max_warning = 30,
 	.min_warning = -5,
-	.max = NAN,
-	.min = NAN
 };
 
 //------------PID LIMITS------------------
@@ -247,16 +242,12 @@ CAN_LIMITS LIMIT_Current = {
 	.min_error = NAN,
 	.max_warning = NAN,
 	.min_warning = NAN,
-	.max = 2,
-	.min = 0
 };
 CAN_LIMITS LIMIT_Velocity = {
 	.max_error = NAN,
 	.min_error = NAN,
 	.max_warning = NAN,
 	.min_warning = NAN,
-	.max = 10,
-	.min = 0
 };
 
 //check value OK
@@ -264,11 +255,6 @@ LIMITS_t check_value(CAN_LIMITS* ptr, float value){
 	if(value >= ptr->max_error || value <= ptr->min_error) return LIMIT_ERROR;			//error
 	if(value >= ptr->max_warning || value <= ptr->min_warning) return LIMIT_WARNING;	//warning
 	return LIMIT_OK;																	//OK
-}
-float Limit(CAN_LIMITS* ptr, float value){
-	if(value > ptr->max)return ptr->max;
-	if(value < ptr->min)return ptr->min;
-	return value;
 }
 
 uint32_t sqrtI(uint32_t sqrtArg)
@@ -381,7 +367,6 @@ void BLDC_main(void){
 	FDCAN_Start(&hfdcan1);
 
 	//--------------setup PWM------------------
-	CTRL_init_PWM();
 
 
 	electrical_offset = storage->electrical_offset;
@@ -402,6 +387,9 @@ void BLDC_main(void){
 	float velocity = 0;
 
 	int32_t position_overflow = 0;
+
+	uint32_t test = 1499;
+	CTRL_init_PWM(&test);
 
 	#ifdef CALIBRATE_ON_STARTUP
 	Status = BLDC_CALIBRATING_ENCODER;
@@ -558,15 +546,7 @@ void BLDC_main(void){
 		Compute(&Velocity_PID);
 
 		#ifndef ZERO_GRAVITY
-//		if(IRQ_Voltage_Temp_BUFF.V_Bat > 10000)SetMode(&Current_PID,  AUTOMATIC);//Limit(&LIMIT_Current, Velocity_PID.Output);
-//		else SetMode(&Current_PID,  MANUAL);
-		//SetMode(&Angle_PID,  AUTOMATIC);
-//		Current_PID.Setpoint = 10000;
 		Current_PID.Setpoint = Velocity_PID.Output;
-
-
-//		if(Velocity_PID.Output > 0) direction = 1;
-//		else direction = -1;
 
 		#else
 //		Current_PID.Setpoint = weight*(fast_sin_2((abs)((float)IRQ_Encoders_BUFF.Encoder1_pos)/1000));
@@ -597,9 +577,8 @@ void BLDC_main(void){
 		}
 		IRQ_Encoders_BUFF.Encoder2_pos = 0;
 		#endif
-//		dac_value((IRQ_Encoders.Encoder1_pos - IRQ_Encoders_BUFF.Encoder1_pos - offset)/8 +1000);
 
-//		dac_value(IRQ_Encoders.Encoder1_pos);
+
 		float V_d = Current_PID_offset.Output;
 		float V_q = Current_PID.Output;
 		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
