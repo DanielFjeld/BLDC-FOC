@@ -21,10 +21,7 @@
 
 	//TYPE ID on CAN messages transmitted form the device (3 bits)
 	#define CAN_FEEDBACK_ID 0x4      	//transmitted every ms
-	#define CAN_PID_CURRENT_ID 0x5   	//need to be requested (
-	#define CAN_PID_VELOCITY_ID 0x6		//need to be requested
-	#define CAN_PID_ANGLE_ID 0x7		//need to be requested
-	#define CAN_LIMITS_ID 0x8		//need to be requested
+	#define CAN_PID_ID 0x5
 
 	//------MOTOR PARAM-----------------
 	#define polepairs 17
@@ -62,25 +59,15 @@
 		int32_t setpoint;
 	}CAN_Status;
 	typedef struct CAN_PID{
+		uint8_t PID; // of type PID_t
 		float Kp;
 		float Ki;
 		float Kd;
 	}CAN_PID;
-	typedef struct CAN_LIMITS{ //if variable = NAN == Inactive
-		float min_warning;
-		float min_error;
-		float max_warning;
-		float max_error;
-	}CAN_LIMITS;
+
 
 
 	//--------------------LIMITS---------------------------------
-	typedef enum{
-		LIMIT_OK,
-		LIMIT_WARNING,
-		LIMIT_ERROR
-	}LIMITS_t;
-
 	typedef enum{
 		INPUT_STOP_WITH_BREAK,
 		INPUT_STOP_AND_SHUTDOWN,
@@ -91,12 +78,25 @@
 
 	}BLDC_STATUS_INPUT_t;
 	typedef enum{
+		PID_CURRENT_D,
+		PID_CURRENT_Q,
+		PID_VELOCITY,
+		PID_ANGLE
+	}PID_t;
+	typedef enum{
 		BLDC_STOPPED_WITH_BREAK,
 		BLDC_STOPPED_AND_SHUTDOWN,
 		BLDC_CALIBRATING_ENCODER,
 		BLDC_RUNNING,
 		BLDC_ERROR
 	}BLDC_STATUS_Feedback;
+
+	typedef enum{
+		LIMIT_Q_CURRENT,
+		LIMIT_D_CURRENT,
+		LIMIT_ENCODER_1,
+		LIMIT_ENCODER_2,
+	}LIMIT_CHECK_t;
 
 	static char status_sting[4][26] = {
 			"  BLDC STOPPED WITH BREAK\0",
