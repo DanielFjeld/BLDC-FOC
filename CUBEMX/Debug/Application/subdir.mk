@@ -6,6 +6,7 @@
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
 ../Application/BLDC_FOC.c \
+../Application/CORDIC_math.c \
 ../Application/CTRL.c \
 ../Application/Calibration.c \
 ../Application/Encoders_SPI.c \
@@ -18,6 +19,7 @@ C_SRCS += \
 
 OBJS += \
 ./Application/BLDC_FOC.o \
+./Application/CORDIC_math.o \
 ./Application/CTRL.o \
 ./Application/Calibration.o \
 ./Application/Encoders_SPI.o \
@@ -30,6 +32,7 @@ OBJS += \
 
 C_DEPS += \
 ./Application/BLDC_FOC.d \
+./Application/CORDIC_math.d \
 ./Application/CTRL.d \
 ./Application/Calibration.d \
 ./Application/Encoders_SPI.d \
@@ -48,7 +51,7 @@ Application/%.o Application/%.su Application/%.cyclo: ../Application/%.c Applica
 clean: clean-Application
 
 clean-Application:
-	-$(RM) ./Application/BLDC_FOC.cyclo ./Application/BLDC_FOC.d ./Application/BLDC_FOC.o ./Application/BLDC_FOC.su ./Application/CTRL.cyclo ./Application/CTRL.d ./Application/CTRL.o ./Application/CTRL.su ./Application/Calibration.cyclo ./Application/Calibration.d ./Application/Calibration.o ./Application/Calibration.su ./Application/Encoders_SPI.cyclo ./Application/Encoders_SPI.d ./Application/Encoders_SPI.o ./Application/Encoders_SPI.su ./Application/Flash.cyclo ./Application/Flash.d ./Application/Flash.o ./Application/Flash.su ./Application/PID.cyclo ./Application/PID.d ./Application/PID.o ./Application/PID.su ./Application/Print_server.cyclo ./Application/Print_server.d ./Application/Print_server.o ./Application/Print_server.su ./Application/current_ADC.cyclo ./Application/current_ADC.d ./Application/current_ADC.o ./Application/current_ADC.su ./Application/example.cyclo ./Application/example.d ./Application/example.o ./Application/example.su ./Application/fdcandriver.cyclo ./Application/fdcandriver.d ./Application/fdcandriver.o ./Application/fdcandriver.su
+	-$(RM) ./Application/BLDC_FOC.cyclo ./Application/BLDC_FOC.d ./Application/BLDC_FOC.o ./Application/BLDC_FOC.su ./Application/CORDIC_math.cyclo ./Application/CORDIC_math.d ./Application/CORDIC_math.o ./Application/CORDIC_math.su ./Application/CTRL.cyclo ./Application/CTRL.d ./Application/CTRL.o ./Application/CTRL.su ./Application/Calibration.cyclo ./Application/Calibration.d ./Application/Calibration.o ./Application/Calibration.su ./Application/Encoders_SPI.cyclo ./Application/Encoders_SPI.d ./Application/Encoders_SPI.o ./Application/Encoders_SPI.su ./Application/Flash.cyclo ./Application/Flash.d ./Application/Flash.o ./Application/Flash.su ./Application/PID.cyclo ./Application/PID.d ./Application/PID.o ./Application/PID.su ./Application/Print_server.cyclo ./Application/Print_server.d ./Application/Print_server.o ./Application/Print_server.su ./Application/current_ADC.cyclo ./Application/current_ADC.d ./Application/current_ADC.o ./Application/current_ADC.su ./Application/example.cyclo ./Application/example.d ./Application/example.o ./Application/example.su ./Application/fdcandriver.cyclo ./Application/fdcandriver.d ./Application/fdcandriver.o ./Application/fdcandriver.su
 
 .PHONY: clean-Application
 

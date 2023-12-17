@@ -13,6 +13,8 @@
 
 #include "dac.h"
 
+#include "CORDIC_math.h"
+
 //ADC setup
 #define ADC_RES 4095 //times two
 #define number_of_calibration_points 1000
@@ -171,14 +173,6 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc){
 	}
 }
 
-//sin(θ◦) ≈ 4θ(180 − θ) 40500 − θ(180 − θ);
-//float _sin(float deg){
-//	return (4*deg*(180-deg)/(40500 - deg*(180-deg)));
-//}
-//sin(θ◦) ≈ 4θ(180 − θ) 40500 − θ(180 − θ);
-float sin3(float deg){
-	return (4*deg*(180-deg)/(40500 - deg*(180-deg)));
-}
 void dq0(float theta, float a, float b, float c, float *d, float *q){
 	//d and q are now fliped
     /// DQ0 Transform ///
@@ -189,9 +183,10 @@ void dq0(float theta, float a, float b, float c, float *d, float *q){
 //    float cf = sin3((float)temp)*pi/180.0f;
 //    float sf = sin3((theta)*180.0f/pi)*pi/180.0f;
 
-	float cf = cos(theta);
-	float sf = sin(theta);
+	float cf; // = cos(theta);
+	float sf; // = sin(theta);
 
+	RunCordic(theta, &cf, &sf);
 
     *d = 0.6666667f*(cf*a + (0.86602540378f*sf-.5f*cf)*b + (-0.86602540378f*sf-.5f*cf)*c);   ///Faster DQ0 Transform
     *q = 0.6666667f*(-sf*a - (-0.86602540378f*cf-.5f*sf)*b - (0.86602540378f*cf-.5f*sf)*c);
