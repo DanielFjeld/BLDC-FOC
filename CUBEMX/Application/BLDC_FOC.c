@@ -345,8 +345,8 @@ void BLDC_main(void){
 	uint16_t mech_offset = storage->mech_offset;//storage->mech_offset;
 	if(mech_offset > 400)mech_offset = 0;
 	uint8_t flash_nan = 0;
-	for(int i = 0; i < sizeof(error_filt); i++){
-		if (isnan(storage->error_filt[i])) flash_nan = 1;
+	for(int i = 0; i < SIZE*NPP; i++){
+		if (isnan(storage->error_filt[i]))flash_nan = 1;
 	}
 	if(!flash_nan)memcpy(error_filt, storage->error_filt,sizeof(error_filt));
 
@@ -371,7 +371,6 @@ void BLDC_main(void){
 	while(1){
 		//check if flag has been set indicating new current measurements
 		while(!Current_Callback_flag);
-
 		Current_Callback_flag = 0;
 
 		#ifdef RUNNING_LED_DEBUG
@@ -381,26 +380,18 @@ void BLDC_main(void){
 
 		memcpy(&IRQ_Current_BUFF, &IRQ_Current, sizeof(Current));
 		memcpy(&IRQ_Voltage_Temp_BUFF, &IRQ_Voltage_Temp, sizeof(Voltage_Temp));
-		#ifndef CALIBRATION
 		memcpy(&IRQ_Encoders_BUFF, &IRQ_Encoders, sizeof(Encoders));
-		#endif
 		memcpy(&IRQ_STATUS_BUFF, &IRQ_Status, sizeof(CAN_Status));
 
-		//start calibration
+		//FSM
 		if(Status == BLDC_STOPPED_WITH_BREAK && IRQ_STATUS_BUFF.status == INPUT_CALIBRATE_ENCODER)Status = BLDC_CALIBRATING_ENCODER;
-
-		//reset errors
 		else if(Status == BLDC_STOPPED_WITH_BREAK && IRQ_STATUS_BUFF.status == INPUT_RESET_ERRORS)error = 0;
-
-		//start motor when not running
 		else if(Status == BLDC_STOPPED_WITH_BREAK && IRQ_STATUS_BUFF.status == INPUT_START){
 			Status = BLDC_RUNNING;
 			SetMode(&Current_PID,  AUTOMATIC);
 			SetMode(&Velocity_PID,  AUTOMATIC);
 			SetMode(&Angle_PID,  AUTOMATIC);
 		}
-
-		//stop motor when running
 		else if(Status == BLDC_RUNNING && IRQ_STATUS_BUFF.status == INPUT_STOP_WITH_BREAK){
 			Status = BLDC_STOPPED_WITH_BREAK;
 			SetMode(&Current_PID,  MANUAL);
@@ -409,24 +400,6 @@ void BLDC_main(void){
 		}
 		else if(Status == BLDC_RUNNING && IRQ_STATUS_BUFF.status == INPUT_STOP_AND_SHUTDOWN)Status = BLDC_STOPPED_AND_SHUTDOWN;
 
-		//time keepers
-		timing_CAN_feedback++;
-		running_LED_timing++;
-
-		//reset warnings
-		uint32_t warning = 0;
-
-		//-------------------check warning and error--------------------------- 6us
-		#ifdef RUNNING_LED_DEBUG
-		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
-		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 0);
-		#endif
-
-		if (Angle_PID.Input < (IRQ_STATUS_BUFF.setpoint - 20000) || Angle_PID.Input > (IRQ_STATUS_BUFF.setpoint + 20000)) warning |= (1 << 8); //warning
-
-		//-------------------RUN FIR FILTER---------------------
-//		HAL_FMAC_MspInit(FMAC_HandleTypeDef* hfmac);
-//		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 0);
 
 		//----------------------position-----------------
 		if (last_pos > 270000 && IRQ_Encoders_BUFF.Encoder1_pos < 90000)position_overflow++;
@@ -443,7 +416,6 @@ void BLDC_main(void){
 
 		int16_t angle = (mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, 0) + error_pos + (int32_t)electrical_offset + 2*360)%360;
 		dq0((float)angle*3.14159264f/180, (float)IRQ_Current_BUFF.Current_M2, (float)IRQ_Current_BUFF.Current_M3, (float)IRQ_Current_BUFF.Current_M1, &d, &q);
-//		IRQ_Current_BUFF.Current_DC = (int32_t)sqrt((d*d + q*q));
 		float q_lpf = Update_FIR_filter(q);
 		float d_lpf = Update_FIR_filter2(d);
 
@@ -484,6 +456,7 @@ void BLDC_main(void){
 		if (mag > 1499)mag = 1499;
 
 		//----------------error check---------------
+		uint32_t warning = 0;
 		check_value(&LIMIT_Current, (float)q_lpf, &warning, &error, 0);
 		check_value(&LIMIT_Current, (float)d_lpf, &warning, &error, 0);
 		check_value(&LIMIT_Encoder_1, (float)IRQ_Encoders_BUFF.Encoder1_pos, &warning, &error, 1);
@@ -525,6 +498,9 @@ void BLDC_main(void){
 		}
 
 		//--------------send can message------------------ 1us
+		//time keepers
+		timing_CAN_feedback++;
+		running_LED_timing++;
 
 		if(timing_CAN_feedback >= LOOP_FREQ_KHZ*5){ //every 5ms
 			timing_CAN_feedback = 0;
@@ -597,12 +573,10 @@ void BLDC_main(void){
 		else HAL_GPIO_WritePin(WARNING_LED_GPIO_Port, WARNING_LED_Pin, 0);
 
 		#ifndef RUNNING_LED_DEBUG
-		#ifndef RUNNING_LED_DEBUG2
 		if(running_LED_timing >= LOOP_FREQ_KHZ*100){
 			running_LED_timing = 0;
 			HAL_GPIO_TogglePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin);
 		}
-		#endif
 		#endif
 
 		//-----------------update dac---------------------------

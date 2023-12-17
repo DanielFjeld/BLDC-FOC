@@ -98,7 +98,7 @@
 		LIMIT_ENCODER_2,
 	}LIMIT_CHECK_t;
 
-	static char status_sting[4][26] = {
+	static char status_sting[5][26] = {
 			"  BLDC STOPPED WITH BREAK\0",
 			"BLDC STOPPED AND SHUTDOWN\0",
 			" BLDC CALIBRATING ENCODER\0",

@@ -7,5 +7,5 @@
 ../Application/BLDC_FOC.c:240:6:check_value	5
 ../Application/BLDC_FOC.c:245:10:sqrtI	6
 ../Application/BLDC_FOC.c:264:7:atan2_approximation2	8
-../Application/BLDC_FOC.c:293:6:BLDC_main	32
-../Application/BLDC_FOC.c:615:9:mech_to_el_deg	6
+../Application/BLDC_FOC.c:293:6:BLDC_main	30
+../Application/BLDC_FOC.c:589:9:mech_to_el_deg	6
