@@ -24,4 +24,6 @@
 
 	void ORBIS_init(Encoders_Callback __IRQ_callback);
 
+	void ENCODER_TIM_PeriodElapsedCallback();
+
 #endif /* ENCODERS_SPI_H_ */

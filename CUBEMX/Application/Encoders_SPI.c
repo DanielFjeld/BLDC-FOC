@@ -103,7 +103,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi)
 
 	Encoders_IRQ_callback(&data_encoders);
 }
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim){
+void ENCODER_TIM_PeriodElapsedCallback(){
 
 	HAL_GPIO_WritePin(ENCODER1_CS_GPIO_Port, ENCODER1_CS_Pin, 0);
 	HAL_GPIO_WritePin(ENCODER2_CS_GPIO_Port, ENCODER2_CS_Pin, 0);

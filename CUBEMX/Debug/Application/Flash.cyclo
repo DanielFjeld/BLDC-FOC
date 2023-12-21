@@ -1,5 +1,5 @@
 ../Application/Flash.c:51:8:flash_read	1
-../Application/Flash.c:55:6:flash_write	2
-../Application/Flash.c:74:6:Flash_init	2
-../Application/Flash.c:83:6:Flash_save	1
+../Application/Flash.c:55:6:flash_write	3
+../Application/Flash.c:74:6:Flash_init	3
+../Application/Flash.c:83:6:Flash_save	2
 ../Application/Flash.c:87:8:Flash_get_values	1

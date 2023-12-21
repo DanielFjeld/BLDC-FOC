@@ -98,6 +98,7 @@
 		LIMIT_ENCODER_2,
 	}LIMIT_CHECK_t;
 
+	#ifdef Status_debug
 	static char status_sting[5][26] = {
 			"  BLDC STOPPED WITH BREAK\0",
 			"BLDC STOPPED AND SHUTDOWN\0",
@@ -105,6 +106,7 @@
 			"             BLDC RUNNING\0",
 			"               BLDC ERROR\0"
 	};
+	#endif
 
 	void BLDC_main(void);
 

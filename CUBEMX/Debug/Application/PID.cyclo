@@ -2,6 +2,6 @@
 ../Application/PID.c:35:6:SetTunings	7
 ../Application/PID.c:58:6:SetSampleTime	2
 ../Application/PID.c:70:6:SetOutputLimits	6
-../Application/PID.c:83:6:SetMode	2
+../Application/PID.c:83:6:SetMode	4
 ../Application/PID.c:93:6:Initialize	3
 ../Application/PID.c:101:6:SetControllerDirection	1

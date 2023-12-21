@@ -1,4 +1,4 @@
 ../Application/CTRL.c:23:6:CTRL_init_PWM	7
-../Application/CTRL.c:46:6:inverter	15
+../Application/CTRL.c:46:6:inverter	8
 ../Application/CTRL.c:111:6:shutoff	1
 ../Application/CTRL.c:116:6:shutdown	1

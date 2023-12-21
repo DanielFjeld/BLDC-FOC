@@ -7,7 +7,6 @@
 "./Application/PID.o"
 "./Application/Print_server.o"
 "./Application/current_ADC.o"
-"./Application/example.o"
 "./Application/fdcandriver.o"
 "./Core/Src/adc.o"
 "./Core/Src/cordic.o"
