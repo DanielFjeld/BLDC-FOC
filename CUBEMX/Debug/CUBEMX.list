@@ -1744,7 +1744,7 @@ void BLDC_main(void){
 void calculate(){
  8001344:	e92d 4ff0 	stmdb	sp!, {r4, r5, r6, r7, r8, r9, sl, fp, lr}
  8001348:	ed2d 8b02 	vpush	{d8}
-	//-----------------MEMCPY---------------------- 1.84us
+	/**-----------------MEMCPY---------------------- 1.84us*/
 	#ifdef RUNNING_LED_DEBUG
 	HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
 	#endif

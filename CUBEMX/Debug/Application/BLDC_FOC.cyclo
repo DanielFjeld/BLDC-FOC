@@ -8,4 +8,4 @@
 ../Application/BLDC_FOC.c:244:6:BLDC_main	5
 ../Application/BLDC_FOC.c:399:6:calculate	55
 ../Application/BLDC_FOC.c:146:6:HAL_TIM_PeriodElapsedCallback	3
-../Application/BLDC_FOC.c:558:9:mech_to_el_deg	1
+../Application/BLDC_FOC.c:559:9:mech_to_el_deg	1

@@ -397,7 +397,7 @@ void BLDC_main(void){
 	}
 }
 void calculate(){
-	//-----------------MEMCPY---------------------- 1.84us
+	/**-----------------MEMCPY---------------------- 1.84us*/
 	#ifdef RUNNING_LED_DEBUG
 	HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
 	#endif
@@ -428,7 +428,7 @@ void calculate(){
 	else if (last_pos_encoder < 90000 && IRQ_Encoders_BUFF.Encoder1_pos > 270000)position_overflow--;
 	last_pos_encoder = IRQ_Encoders_BUFF.Encoder1_pos;
 
-	//------------------calculate PID input----------------------- 19.64us
+	/**------------------calculate PID input----------------------- 19.64us*/
 	#ifdef RUNNING_LED_DEBUG
 	HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 0);
 	#endif
@@ -447,7 +447,7 @@ void calculate(){
 	float q_lpf = Update_FIR_filter(q);
 	float d_lpf = Update_FIR_filter2(d);
 
-	//------------------calculate PID----------------------- 6.88
+	/**------------------calculate PID----------------------- 6.88*/
 	#ifdef RUNNING_LED_DEBUG
 	HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
 	#endif
@@ -474,7 +474,7 @@ void calculate(){
 	//		else direction = 1;
 	#endif
 
-	//-----------------set PWM--------------------- 8.66us
+	/**-----------------set PWM--------------------- 8.66us*/
 	#ifdef RUNNING_LED_DEBUG
 	HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 0);
 	#endif
@@ -493,7 +493,7 @@ void calculate(){
 	mag = mag*1500.0f/0.7f;
 	theta = theta*180.0f;
 
-	//----------------error check---------------5.92us
+	/**----------------error check---------------5.92us*/
 	#ifdef RUNNING_LED_DEBUG
 	HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
 	#endif
@@ -509,7 +509,7 @@ void calculate(){
 	check_value(&LIMIT_temp, IRQ_Voltage_Temp_BUFF.Temp_NTC1, &warning, &error, 6);
 	check_value(&LIMIT_temp, IRQ_Voltage_Temp_BUFF.Temp_NTC2, &warning, &error, 7);
 
-	//-----------------set PWM--------------------- 2us
+	/**-----------------set PWM--------------------- 2us*/
 	#ifdef RUNNING_LED_DEBUG
 	HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 0);
 	#endif
@@ -541,11 +541,12 @@ void calculate(){
 		Flash_save();
 		Status = BLDC_STOPPED_WITH_BREAK;
 	}
+
+
+	/**-----------------update dac---------------------------*/
 	#ifdef RUNNING_LED_DEBUG
 	HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
 	#endif
-
-	//-----------------update dac---------------------------
 	#ifdef DAC_DEBUG
 	dac_value(q/10 +1500);
 	#endif
@@ -553,7 +554,6 @@ void calculate(){
 	#ifdef RUNNING_LED_DEBUG
 	HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 0);
 	#endif
-
 }
 int16_t mech_to_el_deg(int32_t angle_deg, int32_t offset_deg){
 	uint32_t temp = angle_deg-offset_deg+360000*2;
