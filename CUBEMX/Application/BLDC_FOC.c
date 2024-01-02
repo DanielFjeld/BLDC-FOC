@@ -4,6 +4,10 @@
  *  Created on: Nov 8, 2023
  *      Author: Daniel
  */
+
+/*ERRORS:
+ * input to qd convertion can change do to terminals
+ */
 /*TODO:
  * Voltage input on inverter
  * Temp motor NTC
@@ -56,12 +60,12 @@
 #define RUNNING_LED_DEBUG2
 #define PRINT_DEBUG
 
-//#define Current_debug
+#define Current_debug
 //#define Voltage_debug
 //#define Temperature_debug
 //#define Status_debug
 //#define Position_debug
-#define print
+//#define print
 
 //#define CALIBRATE_ON_STARTUP
 
@@ -143,7 +147,12 @@ void Can_RX_Status_IRQ(CAN_Status* ptr){
 }
 
 //--------------------TIMERS---------------------------
+volatile int count = 0;
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim){
+	if(htim == &htim3)
+			ENCODER_TIM_PeriodElapsedCallback();
+
+	count++;
 	if(htim == &htim2){
 		#ifdef RUNNING_LED_DEBUG2
 		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
@@ -157,10 +166,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim){
 		#ifdef RUNNING_LED_DEBUG2
 		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 0);
 		#endif
-	}
 
-	if(htim == &htim3)
-		ENCODER_TIM_PeriodElapsedCallback();
+		count = 0;
+	}
 }
 //-----------------POSITION LIMITS-----------------------
 typedef struct CAN_LIMITS{ //if variable = NAN == Inactive
@@ -237,6 +245,9 @@ uint32_t last_pos_encoder = 0;
 int32_t position_overflow = 0;
 uint32_t warning = 0;
 
+volatile float q_lpf = 0;
+volatile float d_lpf = 0;
+
 volatile float theta;
 volatile float mag;
 
@@ -310,7 +321,24 @@ void BLDC_main(void){
 
 	HAL_TIM_Base_Start_IT(&htim2); //20khz update rate for PID loops
 	while(1){
-		if(timing_CAN_feedback >= LOOP_FREQ_KHZ*5){ //every 5ms
+
+		if (Status == BLDC_CALIBRATING_ENCODER){
+			HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
+			order_phases(&IRQ_Encoders, &IRQ_Current);
+			calibrate(&IRQ_Encoders, &IRQ_Current);
+
+			//start calibration
+			storage->mech_offset = (int16_t)(IRQ_Encoders.Encoder1_pos/1000)%360;
+			storage->electrical_offset = electrical_offset;
+			storage->PHASE_ORDER = PHASE_ORDER;
+			memcpy(storage->error_filt,error_filt,sizeof(error_filt));
+			Flash_save();
+			Status = BLDC_STOPPED_WITH_BREAK;
+		}
+		//calculate();
+
+		timing_CAN_feedback++;
+		if(1 || timing_CAN_feedback >= LOOP_FREQ_KHZ*5){ //every 5ms
 			timing_CAN_feedback = 0;
 			Feedback.Status_warning = warning;
 			Feedback.Status_faults = error;
@@ -394,7 +422,54 @@ void BLDC_main(void){
 		}
 		#endif
 		#endif
+
+		HAL_Delay(5);
 	}
+}
+
+uint32_t sqrtI(uint32_t sqrtArg)
+{
+uint32_t answer, x;
+uint32_t temp;
+if ( sqrtArg == 0 ) return 0; // undefined result
+if ( sqrtArg == 1 ) return 1; // identity
+answer = 0; // integer square root
+for( x=0x8000; x>0; x=x>>1 )
+{ // 16 bit shift
+answer |= x; // possible bit in root
+temp = answer * answer; // fast unsigned multiply
+if (temp == sqrtArg) break; // exact, found it
+if (temp > sqrtArg) answer ^= x; // too large, reverse bit
+}
+return answer; // approximate root
+}
+#define PI_FLOAT     3.14159265f
+#define PIBY2_FLOAT  1.5707963f
+float atan2_approximation2( float y, float x )
+{
+	if ( x == 0.0f )
+	{
+		if ( y > 0.0f ) return PIBY2_FLOAT;
+		if ( y == 0.0f ) return 0.0f;
+		return -PIBY2_FLOAT;
+	}
+	float atan;
+	float z = y/x;
+	if ( fabs( z ) < 1.0f )
+	{
+		atan = z/(1.0f + 0.28f*z*z);
+		if ( x < 0.0f )
+		{
+			if ( y < 0.0f ) return atan - PI_FLOAT;
+			return atan + PI_FLOAT;
+		}
+	}
+	else
+	{
+		atan = PIBY2_FLOAT - z/(z*z + 0.28f);
+		if ( y < 0.0f ) return atan - PI_FLOAT;
+	}
+	return atan;
 }
 void calculate(){
 	/**-----------------MEMCPY---------------------- 1.84us*/
@@ -442,10 +517,12 @@ void calculate(){
 	int16_t angle_temp_1 = mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, 0);
 	int16_t angle = (angle_temp_1 + error_pos + (int32_t)electrical_offset + 2*360)%360;
 
-	dq0((float)angle*3.14159264f/180, (float)IRQ_Current_BUFF.Current_M2, (float)IRQ_Current_BUFF.Current_M3, (float)IRQ_Current_BUFF.Current_M1, &d, &q);
+//	dq0((float)angle*3.14159264f/180, (float)IRQ_Current_BUFF.Current_M2, (float)IRQ_Current_BUFF.Current_M3, (float)IRQ_Current_BUFF.Current_M1, &d, &q);
+	dq0((float)angle*3.14159264f/180, (float)IRQ_Current_BUFF.Current_M3, (float)IRQ_Current_BUFF.Current_M2, (float)IRQ_Current_BUFF.Current_M1, &d, &q);
+//	dq0((float)angle*3.14159264f/180, (float)IRQ_Current_BUFF.Current_M2, (float)IRQ_Current_BUFF.Current_M3, (float)IRQ_Current_BUFF.Current_M1, &d, &q);
 
-	float q_lpf = Update_FIR_filter(q);
-	float d_lpf = Update_FIR_filter2(d);
+	q_lpf = Update_FIR_filter(q);
+	d_lpf = Update_FIR_filter2(d);
 
 	/**------------------calculate PID----------------------- 6.88*/
 	#ifdef RUNNING_LED_DEBUG
@@ -462,7 +539,7 @@ void calculate(){
 	Velocity_PID.Setpoint = Angle_PID.Output;
 	Compute(&Velocity_PID);
 
-	Current_PID.Setpoint = Velocity_PID.Output;
+	Current_PID.Setpoint = 500; //Velocity_PID.Output;
 	Compute(&Current_PID);
 
 	Current_PID_offset.Setpoint = 0;
@@ -482,16 +559,18 @@ void calculate(){
 	float V_d = Current_PID_offset.Output;
 	float V_q = Current_PID.Output;
 
-//	V_d = 0; //0 deg offset
-//	V_q = -500; //90 deg offset
+//	V_d= V_d/1500.0f*0.7f;
+//	V_q= V_q/1500.0f*0.7f;
+//
+//	RunCordic_inverse(V_d, V_q, &theta, &mag);
+//
+//	mag = mag*1500.0f/0.7f;
+//	theta = theta*180.0f;
 
-	V_d= V_d/1500.0f*0.7f;
-	V_q= V_q/1500.0f*0.7f;
-
-	RunCordic_inverse(V_d, V_q, &theta, &mag);
-
-	mag = mag*1500.0f/0.7f;
-	theta = theta*180.0f;
+	theta = atan2_approximation2(V_q, V_d)*180.0f/3.14159264f;
+	uint32_t mag = (uint32_t)(sqrtI((V_q*V_q+V_d*V_d)));
+    mag *= 0.7;
+	if (mag > 1499)mag = 1499;
 
 	/**----------------error check---------------5.92us*/
 	#ifdef RUNNING_LED_DEBUG
@@ -523,23 +602,14 @@ void calculate(){
 		shutdown();
 	}
 	else if (Status == BLDC_STOPPED_WITH_BREAK){
-		shutoff();
+//		shutoff();
+		inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, 0)+error_pos + (int32_t)electrical_offset + (int32_t)theta + 360*2, mag, PHASE_ORDER);
 	}
 	else if (Status == BLDC_RUNNING){
 		inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, 0)+error_pos + (int32_t)electrical_offset + (int32_t)theta + 360*2, mag, PHASE_ORDER);
 	}
 	else if (Status == BLDC_CALIBRATING_ENCODER){
-		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
-		order_phases(&IRQ_Encoders, &IRQ_Current);
-		calibrate(&IRQ_Encoders, &IRQ_Current);
-
-		//start calibration
-		storage->mech_offset = (int16_t)(IRQ_Encoders.Encoder1_pos/1000)%360;
-		storage->electrical_offset = electrical_offset;
-		storage->PHASE_ORDER = PHASE_ORDER;
-		memcpy(storage->error_filt,error_filt,sizeof(error_filt));
-		Flash_save();
-		Status = BLDC_STOPPED_WITH_BREAK;
+		//see main loop
 	}
 
 

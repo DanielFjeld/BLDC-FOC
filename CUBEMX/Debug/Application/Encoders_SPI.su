@@ -1,3 +1,3 @@
-../Application/Encoders_SPI.c:48:6:ORBIS_init	24	static
-../Application/Encoders_SPI.c:73:6:HAL_SPI_TxRxCpltCallback	16	static
+../Application/Encoders_SPI.c:48:6:ORBIS_init	16	static
+../Application/Encoders_SPI.c:73:6:HAL_SPI_TxRxCpltCallback	24	static
 ../Application/Encoders_SPI.c:106:6:ENCODER_TIM_PeriodElapsedCallback	8	static

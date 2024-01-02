@@ -7,12 +7,6 @@
 
 
 #include "calibration.h"
-//#include "foc.h"
-//#include "PreferenceWriter.h"
-//#include "user_config.h"
-//#include "motor_config.h"
-//#include "current_controller_config.h"
-
 #include "CTRL.h"
 #include "Encoders_SPI.h"
 #include "current_ADC.h"
@@ -20,9 +14,6 @@
 #include "math.h"
 
 #define CAL_DUTY 100
-
-//uint32_t find_closest(float arr[], int length, float target);
-
 
 #define WINDOW_SIZE SIZE
 
@@ -98,7 +89,7 @@ void calibrate(Encoders *ps, Current *cs){ //, PositionSensor *ps, GPIOStruct *g
    const int n = SIZE*NPP;                                                      // number of positions to be sampled per mechanical rotation.  Multiple of NPP for filtering reasons (see later)
    const int n2 = 40;                                                          // increments between saved samples (for smoothing motion)
    float delta = 360.0f*NPP/(n*n2);                                              // change in angle between samples
-   const int  n_lut =  SIZE*NPP;
+//   const int  n_lut =  SIZE*NPP;
    const int window = WINDOW_SIZE;
    float cogging_current[WINDOW_SIZE] = {0};
 
@@ -112,7 +103,7 @@ void calibrate(Encoders *ps, Current *cs){ //, PositionSensor *ps, GPIOStruct *g
 
     float error_f[n];
     float error_b[n];
-    int lut[n];
+//    int lut[n];
     int raw_f[n];
     int raw_b[n];
     float error[n];
@@ -191,71 +182,8 @@ void calibrate(Encoders *ps, Current *cs){ //, PositionSensor *ps, GPIOStruct *g
 //            HAL_Delay(10);
             mean += error_filt[i]/n;
             }
-        int raw_offset = (raw_f[0] + raw_b[n-1])/2;                             //Insensitive to errors in this direction, so 2 points is plenty
+//        int raw_offset = (raw_f[0] + raw_b[n-1])/2;                             //Insensitive to errors in this direction, so 2 points is plenty
 
+PrintServerPrintf("\n\rEncoder Electrical Offset (deg) %f\n\r",  electrical_offset);
 
-//        PrintServerPrintf("\n\r Encoder non-linearity compensation table\n\r");
-//        PrintServerPrintf("Sample Number : Lookup Index : Lookup Value\n\r\n\r");
-//        for (int i = 0; i<n_lut; i++){                                          // build lookup table
-//            int ind = (raw_offset>>7) + i;
-//            if(ind > (n_lut-1)){
-//                ind -= n_lut;
-//                }
-//            lut[ind] = (int) (((error_filt[i] - mean)*(float)(CPR)/(360.0f)));
-//            PrintServerPrintf("%d %d %d\n\r", i, ind, lut[ind]);
-//            HAL_Delay(10);
-//            }
-
-//        ps->WriteLUT(lut);                                                      // write lookup table to position sensor object
-        //memcpy(controller->cogging, cogging_current, sizeof(controller->cogging));  //compensation doesn't actually work yet....
-
-//        memcpy(&ENCODER_LUT, lut, 128*4);                                 // copy the lookup table to the flash array
-        PrintServerPrintf("\n\rEncoder Electrical Offset (deg) %f\n\r",  electrical_offset);
-//
-//        float error_test[SIZE*NPP] = {0};
-//        for(int i = 0; i < SIZE*NPP; i++){
-//        	error_test[i] = error_filt[i] + i * 360.0 / (SIZE*NPP);
-//        	if(error_test[i] > 360.0f)error_test[i] -= 360.0f;
-//        }
-//        for (int i = 0; i<LUT_SIZE; i++){
-//        	float wanted_pos = i *360.0f / LUT_SIZE;
-//        	motor_lut[i] = find_closest(error_test, SIZE*NPP, wanted_pos);
-//        	PrintServerPrintf("%d\n\r", motor_lut[i]);
-//        }
     }
-
-// Function to find the closest number in the array
-//uint32_t find_closest(float arr[], int length, float target){
-//    float smallest_diff = arr[0] - target;
-//    if(smallest_diff < 0)smallest_diff = -1*smallest_diff;
-//    uint32_t index = 0;
-//
-//    for (int i = 1; i < length; i++) {
-//    	float diff;
-//        diff = arr[i] - target;
-//        if(diff < 0)diff = -1*diff;
-//
-//        if (diff < smallest_diff) {
-//            smallest_diff = diff;
-//            index = i;
-//        }
-//
-//        diff = arr[i] - target - 360.0f;
-//        if(diff < 0)diff = -1*diff;
-//
-//		if (diff < smallest_diff) {
-//		smallest_diff = diff;
-//		index = i;
-//		}
-//
-//		diff = arr[i] - target + 360.0f;
-//		if(diff < 0)diff = -1*diff;
-//
-//		if (diff < smallest_diff) {
-//		  smallest_diff = diff;
-//		  index = i;
-//		}
-//
-//    }
-//    return index; //(index*360000)/length;
-//}

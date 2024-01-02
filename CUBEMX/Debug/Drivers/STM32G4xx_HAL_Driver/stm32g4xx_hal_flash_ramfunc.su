@@ -1,2 +1,2 @@
-C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_flash_ramfunc.c:92:30:HAL_FLASHEx_EnableRunPowerDown	0	static
-C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_flash_ramfunc.c:106:30:HAL_FLASHEx_DisableRunPowerDown	0	static
+C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_flash_ramfunc.c:92:30:HAL_FLASHEx_EnableRunPowerDown	4	static
+C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_flash_ramfunc.c:106:30:HAL_FLASHEx_DisableRunPowerDown	4	static

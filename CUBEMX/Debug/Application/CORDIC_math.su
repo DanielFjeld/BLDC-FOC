@@ -1,3 +1,2 @@
-../Application/CORDIC_math.c:17:6:RunCordic	0	static
-../Application/CORDIC_math.c:29:6:RunCordic2	0	static
-../Application/CORDIC_math.c:46:6:RunCordic_inverse	0	static
+../Application/CORDIC_math.c:17:6:RunCordic	40	static
+../Application/CORDIC_math.c:30:6:RunCordic_inverse	32	static

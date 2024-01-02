@@ -32,12 +32,12 @@ Flash RAM = {
 		.Velocity_ki = 4.0,//4.0f, //0.01
 		.Velocity_kd = 0.0,//0.0f, //0.00001
 
-		.Current_kp = 0.02f,//0.02
-		.Current_ki = 20.0f,//20.0f,
+		.Current_kp = 0.002f,//0.02
+		.Current_ki = 5.0f,//20.0f,
 		.Current_kd = 0.0f,
 
-		.Current_offset_kp = 0.001f,
-		.Current_offset_ki = 30.1f,
+		.Current_offset_kp = 0.002f,
+		.Current_offset_ki = 5.0f,
 		.Current_offset_kd = 0.0f,
 
 		.Velocity_limit = 4000.0f, //rpm

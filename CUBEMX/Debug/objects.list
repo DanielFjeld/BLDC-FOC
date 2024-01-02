@@ -3,6 +3,7 @@
 "./Application/CTRL.o"
 "./Application/Calibration.o"
 "./Application/Encoders_SPI.o"
+"./Application/FMAC_filter.o"
 "./Application/Flash.o"
 "./Application/PID.o"
 "./Application/Print_server.o"
