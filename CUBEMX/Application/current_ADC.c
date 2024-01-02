@@ -183,10 +183,10 @@ void dq0(float theta, float a, float b, float c, float *d, float *q){
 //    float cf = sin3((float)temp)*pi/180.0f;
 //    float sf = sin3((theta)*180.0f/pi)*pi/180.0f;
 
-	float cf; // = cos(theta);
-	float sf; // = sin(theta);
+	float cf = cosf(theta);
+	float sf = sinf(theta);
 
-	RunCordic(theta, &cf, &sf);
+//	RunCordic(theta, &cf, &sf);
 
     *d = 0.6666667f*(cf*a + (0.86602540378f*sf-.5f*cf)*b + (-0.86602540378f*sf-.5f*cf)*c);   ///Faster DQ0 Transform
     *q = 0.6666667f*(-sf*a - (-0.86602540378f*cf-.5f*sf)*b - (0.86602540378f*cf-.5f*sf)*c);

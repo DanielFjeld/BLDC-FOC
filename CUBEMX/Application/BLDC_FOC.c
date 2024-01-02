@@ -81,10 +81,10 @@
 #define PRINT_DEBUG
 
 #define Current_debug
-#define Voltage_debug
+//#define Voltage_debug
 //#define Temperature_debug
-#define Status_debug
-#define Position_debug
+//#define Status_debug
+//#define Position_debug
 
 //#define CALIBRATE_ON_STARTUP
 
@@ -126,14 +126,14 @@ float Update_FIR_filter(float input){
 	return temp;
 }
 
-#define FIR_FILTER_LENGTH2 100
+#define FIR_FILTER_LENGTH2 10
 uint8_t FIR_index2 = 0;
 float FIR_Values2[FIR_FILTER_LENGTH2] = {0};
 float FIR2_value = 0;
 float Update_FIR_filter2(float input){
-	FIR2_value -= FIR_Values2[FIR_index];
-	FIR_Values2[FIR_index] = input/FIR_FILTER_LENGTH2;
-	FIR2_value += FIR_Values2[FIR_index] ;
+	FIR2_value -= FIR_Values2[FIR_index2];
+	FIR_Values2[FIR_index2] = input/FIR_FILTER_LENGTH2;
+	FIR2_value += FIR_Values2[FIR_index2] ;
 	if(FIR_index2 < FIR_FILTER_LENGTH2-1)FIR_index2++;
 	else FIR_index2 = 0;
 	return FIR2_value;
@@ -411,11 +411,11 @@ void BLDC_main(void){
 		float q;
 		int16_t index_error = (int16_t)(IRQ_Encoders_BUFF.Encoder1_pos/1000)%360;// - electrical_offset);
 		uint16_t index_error2 = ((((index_error-mech_offset+360)%360)*(SIZE*NPP))/360)%(SIZE*NPP);
-		int32_t error_pos = ((int32_t)(error_filt[index_error2] - (int32_t)error_filt[0])*17);
+		int32_t error_pos = (int32_t)(((error_filt[index_error2] - error_filt[0])/**NPP*/)); //((int32_t)(error_filt[index_error2] - (int32_t)error_filt[0])*17);
 
-
-		int16_t angle = (mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, 0) + error_pos + (int32_t)electrical_offset + 2*360)%360;
-		dq0((float)angle*3.14159264f/180, (float)IRQ_Current_BUFF.Current_M2, (float)IRQ_Current_BUFF.Current_M3, (float)IRQ_Current_BUFF.Current_M1, &d, &q);
+		//mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, 0) + (int32_t)electrical_offset
+		int16_t angle = (mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, 0) + (int32_t)electrical_offset + 2*360)%360;
+		dq0((float)angle*3.14159264f/180, (float)IRQ_Current_BUFF.Current_M3, (float)IRQ_Current_BUFF.Current_M2, (float)IRQ_Current_BUFF.Current_M1, &d, &q);
 		float q_lpf = Update_FIR_filter(q);
 		float d_lpf = Update_FIR_filter2(d);
 
@@ -428,9 +428,11 @@ void BLDC_main(void){
 		Angle_PID.Setpoint = (float)IRQ_STATUS_BUFF.setpoint;
 		Compute(&Angle_PID);
 
-		Velocity_PID.Setpoint = Angle_PID.Output;
+		Velocity_PID.Setpoint = 60000.0;
+//		Velocity_PID.Setpoint = Angle_PID.Output;
 		Compute(&Velocity_PID);
 
+//		Current_PID.Setpoint = 1000;
 		Current_PID.Setpoint = Velocity_PID.Output;
 		Compute(&Current_PID);
 
@@ -477,8 +479,8 @@ void BLDC_main(void){
 			shutdown();
 		}
 		else if (Status == BLDC_STOPPED_WITH_BREAK){
-			shutoff();
-//			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, 0)+error_pos + (int32_t)electrical_offset + (int32_t)theta + 360*2, mag, PHASE_ORDER);
+//			shutoff();
+			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, 0) + error_pos + (int32_t)electrical_offset + (int32_t)theta + 360*2, mag, PHASE_ORDER);
 			}
 		else if (Status == BLDC_RUNNING){
 			inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, 0)+error_pos + (int32_t)electrical_offset + (int32_t)theta + 360*2, mag, PHASE_ORDER);
@@ -544,7 +546,7 @@ void BLDC_main(void){
 					"STATUS[MODE:%s SP:%8d WARN:0x%02x ERROR:0x%02x]"
 					#endif
 					#ifdef Position_debug
-					"POSITION[EN1:%7d EN2:%7d CALC:%7i VELOCITY:%7i]"
+					"POSITION[EN1:%7d EN2:%7d CALC:%7d VELOCITY:%7i]"
 					#endif
 					"\r\n"
 					#ifdef Current_debug
@@ -560,7 +562,7 @@ void BLDC_main(void){
 					, status_sting[Feedback.Status_mode], Feedback.Status_setpoint, Feedback.Status_warning, Feedback.Status_faults
 						#endif
 					#ifdef Position_debug
-					, Feedback.Position_Encoder1_pos, (int32_t)Velocity_PID.Input, Feedback.Position_Calculated_pos, Feedback.Position_Velocity/1000
+					, Feedback.Position_Encoder1_pos, (int32_t)Velocity_PID.Input, error_pos/*Feedback.Position_Calculated_pos*/, (mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, 0)+error_pos + (int32_t)electrical_offset + (int32_t)theta + 360*2)%360 //Feedback.Position_Velocity/1000
 					#endif
 					); // \r only goes back not to next line!
 			#endif
