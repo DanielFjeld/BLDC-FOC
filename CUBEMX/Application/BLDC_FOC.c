@@ -77,7 +77,7 @@
 
 #define LOOP_FREQ_KHZ 30
 
-//#define RUNNING_LED_DEBUG
+#define RUNNING_LED_DEBUG
 #define PRINT_DEBUG
 
 #define Current_debug
@@ -93,8 +93,7 @@
 //#define CALIBRATION
 int32_t test_val = 0;
 
-//#define ZERO_GRAVITY
-float weight = 100;
+#define ZERO_GRAVITY
 
 //-------------------MISC-----------------
 uint8_t Current_Callback_flag = 0;
@@ -374,8 +373,8 @@ void BLDC_main(void){
 		Current_Callback_flag = 0;
 
 		#ifdef RUNNING_LED_DEBUG
-		HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
-		//HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 0);
+		HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 1);
+		HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 0);
 		#endif
 
 		memcpy(&IRQ_Current_BUFF, &IRQ_Current, sizeof(Current));
@@ -425,27 +424,32 @@ void BLDC_main(void){
 		Current_PID.Input = q_lpf;
 		Current_PID_offset.Input = d_lpf;
 
-		Angle_PID.Setpoint = (float)IRQ_STATUS_BUFF.setpoint;
+		Angle_PID.Setpoint = 0;
+//		Angle_PID.Setpoint = (float)IRQ_STATUS_BUFF.setpoint;
 		Compute(&Angle_PID);
 
-		Velocity_PID.Setpoint = 60000.0;
-//		Velocity_PID.Setpoint = Angle_PID.Output;
+//		Velocity_PID.Setpoint = 60000.0;
+		Velocity_PID.Setpoint = Angle_PID.Output;
 		Compute(&Velocity_PID);
+
+
+
+		#ifdef ZERO_GRAVITY
+		float weight = 5.2; //amps at 90 degrees;
+		Current_PID.Setpoint = weight*(sinf((((float)IRQ_Encoders_BUFF.Encoder1_pos)/1000+storage->Encoder1_offset)*3.14159264/180))*1000;
+		#else
 
 //		Current_PID.Setpoint = 1000;
 		Current_PID.Setpoint = Velocity_PID.Output;
+
+
+		#endif
 		Compute(&Current_PID);
 
 		Current_PID_offset.Setpoint = 0;
 		Compute(&Current_PID_offset);
 
-		#ifndef ZERO_GRAVITY
 
-		#else
-//		Current_PID.Setpoint = weight*(fast_sin_2((abs)((float)IRQ_Encoders_BUFF.Encoder1_pos)/1000));
-//		if(IRQ_Encoders_BUFF.Encoder1_pos > 180000) direction = -1;
-//		else direction = 1;
-		#endif
 
 		//-----------------set PWM--------------------- 3.12us
 		float V_d = Current_PID_offset.Output;
@@ -550,7 +554,7 @@ void BLDC_main(void){
 					#endif
 					"\r\n"
 					#ifdef Current_debug
-					, Feedback.Current_M1,  Feedback.Current_M2, Feedback.Current_M3, Feedback.Current_DC, (int32_t)Current_PID.Output, (int16_t)d_lpf, (int16_t)q_lpf, (int16_t)theta , (int16_t)Current_PID_offset.Output // test
+					, Feedback.Current_M1,  Feedback.Current_M2, Feedback.Current_M3, Feedback.Current_DC, (int32_t)Current_PID.Output, (int16_t)d_lpf, (int16_t)q_lpf, (int16_t)angle , (int16_t)Current_PID_offset.Output // test
 					#endif
 					#ifdef Voltage_debug
 					, Feedback.Voltage_BAT, Feedback.Voltage_AUX

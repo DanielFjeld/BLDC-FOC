@@ -24,26 +24,26 @@ Flash Stored_in_RAM = {0};
 Flash RAM = {
 		.ID = ID_STRING,
 
-		.Angle_kp = 4.0f,
+		.Angle_kp = 3.0f,
 		.Angle_ki = 0.0f,
 		.Angle_kd = 0.0f,
 
-		.Velocity_kp = 0.1,// 0.1f, //0.2
-		.Velocity_ki = 4.0,//4.0f, //0.01
+		.Velocity_kp = 0.18,// 0.1f, //0.2
+		.Velocity_ki = 6.0,//4.0f, //0.01
 		.Velocity_kd = 0.0,//0.0f, //0.00001
 
-		.Current_kp = 0.02f,//0.02
-		.Current_ki = 20.0f,//20.0f,
+		.Current_kp = 0.002f,//0.02
+		.Current_ki = 35.0f,//20.0f,
 		.Current_kd = 0.0f,
 
 		.Current_offset_kp = 0.001f,
-		.Current_offset_ki = 30.1f,
+		.Current_offset_ki = 20.1f,
 		.Current_offset_kd = 0.0f,
 
 		.Velocity_limit = 4000.0f, //rpm
-		.Current_limit = 30.0f, //ampere
+		.Current_limit = 10.0f, //ampere
 
-		.Encoder1_offset = 40.000f
+		.Encoder1_offset = 30.000f
 };
 
 uint64_t test_data[2] = {0};

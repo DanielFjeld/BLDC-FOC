@@ -65,7 +65,7 @@ void ORBIS_init(Encoders_Callback __IRQ_callback){
 
 float velocity_accumulate;
 int32_t last_pos = 0;
-#define velocity_lpf_size 100
+#define velocity_lpf_size 4
 uint8_t velocity_index = 0;
 float velocity_array[velocity_lpf_size] = {0};
 

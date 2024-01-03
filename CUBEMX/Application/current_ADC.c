@@ -185,7 +185,6 @@ void dq0(float theta, float a, float b, float c, float *d, float *q){
 
 	float cf = cosf(theta);
 	float sf = sinf(theta);
-
 //	RunCordic(theta, &cf, &sf);
 
     *d = 0.6666667f*(cf*a + (0.86602540378f*sf-.5f*cf)*b + (-0.86602540378f*sf-.5f*cf)*c);   ///Faster DQ0 Transform
