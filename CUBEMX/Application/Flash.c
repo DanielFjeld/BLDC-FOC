@@ -43,7 +43,7 @@ Flash RAM = {
 		.Velocity_limit = 4000.0f, //rpm
 		.Current_limit = 20.0f, //ampere
 
-		.Encoder1_offset = 30.0f
+		.Encoder1_offset = 5.0f
 };
 
 uint64_t test_data[2] = {0};

@@ -7,6 +7,6 @@
 ../Application/BLDC_FOC.c:228:6:check_value	32	static
 ../Application/BLDC_FOC.c:233:10:sqrtI	32	static
 ../Application/BLDC_FOC.c:252:7:atan2_approximation2	24	static
-../Application/BLDC_FOC.c:299:6:BLDC_main	16	static
-../Application/BLDC_FOC.c:386:6:run	72	static
-../Application/BLDC_FOC.c:585:9:mech_to_el_deg	24	static
+../Application/BLDC_FOC.c:299:6:BLDC_main	24	static
+../Application/BLDC_FOC.c:422:6:run	72	static
+../Application/BLDC_FOC.c:587:9:mech_to_el_deg	24	static

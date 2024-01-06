@@ -8,5 +8,5 @@
 ../Application/BLDC_FOC.c:233:10:sqrtI	6
 ../Application/BLDC_FOC.c:252:7:atan2_approximation2	8
 ../Application/BLDC_FOC.c:299:6:BLDC_main	6
-../Application/BLDC_FOC.c:386:6:run	21
-../Application/BLDC_FOC.c:585:9:mech_to_el_deg	6
+../Application/BLDC_FOC.c:422:6:run	21
+../Application/BLDC_FOC.c:587:9:mech_to_el_deg	6

@@ -14,7 +14,7 @@ C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HA
 C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_adc.c:2288:6:HAL_ADC_IRQHandler	24	static
 C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_adc.c:3556:6:ADC_DMAConvCplt	8	static
 C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_adc.c:3652:6:ADC_DMAError	8	static
-C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_adc.c:2758:19:HAL_ADC_ConfigChannel	24	static,ignoring_inline_asm
+C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_adc.c:2758:19:HAL_ADC_ConfigChannel	32	static,ignoring_inline_asm
 C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_adc.c:2991:19:HAL_ADC_AnalogWDGConfig	12	static,ignoring_inline_asm
 C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_adc.c:3246:10:HAL_ADC_GetState	0	static
 C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_adc.c:3260:10:HAL_ADC_GetError	0	static

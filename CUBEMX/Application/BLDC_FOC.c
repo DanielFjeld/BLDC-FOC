@@ -92,7 +92,7 @@
 
 int32_t test_val = 0;
 
-//#define ZERO_GRAVITY
+#define ZERO_GRAVITY
 
 //-------------------MISC-----------------
 uint8_t Current_Callback_flag = 0;
@@ -380,6 +380,42 @@ void BLDC_main(void){
 			Flash_save();
 			Status = BLDC_STOPPED_WITH_BREAK;
 		}
+
+		#ifdef PRINT_DEBUG
+			PrintServerPrintf(
+			#ifdef Current_debug
+			"CURRENT[M1:%7d M2:%7d M3:%7d DC:%7d DC(FIR):%7d D%7d Q%7d POS %4d out %3d] "
+			#endif
+			#ifdef Voltage_debug
+			"VOLTAGE[Vbat:%.1f Vaux:%.1f]"
+			#endif
+			#ifdef Temperature_debug
+			"TEMPERATURE[NTC1:%5d NTC2:%5d ENCODER1:%5d ENCODER2:%5d]  "
+			#endif
+			#ifdef Status_debug
+			"STATUS[MODE:%s SP:%8d WARN:0x%02x ERROR:0x%02x]"
+			#endif
+			#ifdef Position_debug
+			"POSITION[EN1:%7d EN2:%7d CALC:%7d VELOCITY:%7d]"
+			#endif
+			"\r\n"
+			#ifdef Current_debug
+			, IRQ_Current_BUFF.Current_M1,  IRQ_Current_BUFF.Current_M2, IRQ_Current_BUFF.Current_M3, 0, (int32_t)Current_PID.Output, (int16_t)d_lpf, (int16_t)q_lpf, (int16_t)angle , (int16_t)Current_PID_offset.Output // test
+			#endif
+			#ifdef Voltage_debug
+			, Feedback.Voltage_BAT, Feedback.Voltage_AUX
+			#endif
+			#ifdef Temperature_debug
+			, Feedback.Temp_NTC1, Feedback.Temp_NTC2, Feedback.Temp_ENCODER1, Feedback.Temp_ENCODER2
+			#endif
+			#ifdef Status_debug
+			, status_sting[Feedback.Status_mode], Feedback.Status_setpoint, Feedback.Status_warning, Feedback.Status_faults
+				#endif
+			#ifdef Position_debug
+			, (int32_t)Feedback.Position_Encoder1_pos, (int32_t)Feedback.Position_Encoder2_pos, (int32_t)Feedback.Position_Calculated_pos, (int32_t)Feedback.Position_Velocity//Velocity_PID.Setpoint
+			#endif
+			); // \r only goes back not to next line!
+		#endif
 	}
 }
 
@@ -446,7 +482,7 @@ void run(){
 	Compute(&Velocity_PID);
 
 	#ifdef ZERO_GRAVITY
-	float weight = 5.2; //amps at 90 degrees;
+	float weight = 4.7; //amps at 90 degrees;
 	Current_PID.Setpoint = weight*(sinf((((float)IRQ_Encoders_BUFF.Encoder1_pos)/1000+storage->Encoder1_offset)*3.14159264/180));
 	#else
 
@@ -526,41 +562,7 @@ void run(){
 
 		//-----------------PRINTF DEBUGGING-------------------
 		//will print same info as on CAN-BUS
-		#ifdef PRINT_DEBUG
-		PrintServerPrintf(
-				#ifdef Current_debug
-				"CURRENT[M1:%7d M2:%7d M3:%7d DC:%7d DC(FIR):%7d D%7d Q%7d POS %4d out %3d] "
-				#endif
-				#ifdef Voltage_debug
-				"VOLTAGE[Vbat:%.1f Vaux:%.1f]"
-				#endif
-				#ifdef Temperature_debug
-				"TEMPERATURE[NTC1:%5d NTC2:%5d ENCODER1:%5d ENCODER2:%5d]  "
-				#endif
-				#ifdef Status_debug
-				"STATUS[MODE:%s SP:%8d WARN:0x%02x ERROR:0x%02x]"
-				#endif
-				#ifdef Position_debug
-				"POSITION[EN1:%7d EN2:%7d CALC:%7d VELOCITY:%7d]"
-				#endif
-				"\r\n"
-				#ifdef Current_debug
-				, IRQ_Current_BUFF.Current_M1,  IRQ_Current_BUFF.Current_M2, IRQ_Current_BUFF.Current_M3, 0, (int32_t)Current_PID.Output, (int16_t)d_lpf, (int16_t)q_lpf, (int16_t)angle , (int16_t)Current_PID_offset.Output // test
-				#endif
-				#ifdef Voltage_debug
-				, Feedback.Voltage_BAT, Feedback.Voltage_AUX
-				#endif
-				#ifdef Temperature_debug
-				, Feedback.Temp_NTC1, Feedback.Temp_NTC2, Feedback.Temp_ENCODER1, Feedback.Temp_ENCODER2
-				#endif
-				#ifdef Status_debug
-				, status_sting[Feedback.Status_mode], Feedback.Status_setpoint, Feedback.Status_warning, Feedback.Status_faults
-					#endif
-				#ifdef Position_debug
-				, (int32_t)Feedback.Position_Velocity, (int32_t)(q_lpf), angle/*Feedback.Position_Calculated_pos*/, (int32_t)(d_lpf)//Velocity_PID.Setpoint
-				#endif
-				); // \r only goes back not to next line!
-		#endif
+
 	}
 
 	//----------------set status LEDs---------------------
