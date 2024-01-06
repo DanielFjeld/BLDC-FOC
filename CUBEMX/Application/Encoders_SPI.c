@@ -11,6 +11,7 @@
 #include "tim.h"
 
 #include "Encoders_SPI.h"
+#include "BLDC_FOC.h"
 
 #define ORBIS_SPI_SIZE 5
 #define ORBIS_NORNAL_OPERATION 't'
@@ -104,9 +105,12 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi)
 	Encoders_IRQ_callback(&data_encoders);
 }
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim){
-
 	HAL_GPIO_WritePin(ENCODER1_CS_GPIO_Port, ENCODER1_CS_Pin, 0);
 	HAL_GPIO_WritePin(ENCODER2_CS_GPIO_Port, ENCODER2_CS_Pin, 0);
 	HAL_SPI_TransmitReceive_DMA(&hspi1, SPI1_tx_buff, SPI1_rx_buff, ORBIS_SPI_SIZE);
 	HAL_SPI_TransmitReceive_DMA(&hspi3, SPI3_tx_buff, SPI3_rx_buff, ORBIS_SPI_SIZE);
+
+	HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 1);
+	run();
+	HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 0);
 }

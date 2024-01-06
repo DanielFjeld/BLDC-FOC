@@ -33,37 +33,28 @@
 		uint32_t Status_mode;
 		uint32_t Status_warning;
 		uint32_t Status_faults;
-		int32_t  Status_setpoint;
+		float  Status_setpoint;
 
-		uint32_t Position_Encoder1_pos; 	//0 to 360 000
-		uint32_t Position_Encoder2_pos; 	//0 to 360 000
-		int32_t  Position_Calculated_pos; //-2,147,483,648 to 2,147,483,647 	//DEG/1000
-		int32_t  Position_Velocity; 		//-2,147,483,648 to 2,147,483,647 	//RPM/100
+		float Position_Encoder1_pos; 	//0 to 360 000
+		float Position_Encoder2_pos; 	//0 to 360 000
+		float Position_Calculated_pos; //-2,147,483,648 to 2,147,483,647 	//DEG/1000
+		float Position_Velocity; 		//-2,147,483,648 to 2,147,483,647 	//RPM/1000
 
-		int32_t Current_M1;
-		int32_t Current_M2;
-		int32_t Current_M3;
-		uint32_t Current_DC;
+		float Current_Q;
+		float Current_D;
 
-		int16_t Temp_NTC1;
-		int16_t Temp_NTC2;
 		int16_t Temp_ENCODER1;
 		int16_t Temp_ENCODER2;
 
-		uint32_t Voltage_BAT;
-		uint32_t Voltage_AUX;
+		float Voltage_BAT;
+		float Voltage_AUX;
+
+		uint8_t recerve[12];
 	}CAN_Feedback;
 	typedef struct CAN_Status{
 		uint32_t status;
-		uint32_t reset_faults;
-		int32_t setpoint;
+		float setpoint;
 	}CAN_Status;
-	typedef struct CAN_PID{
-		uint8_t PID; // of type PID_t
-		float Kp;
-		float Ki;
-		float Kd;
-	}CAN_PID;
 
 
 
@@ -107,5 +98,6 @@
 	};
 
 	void BLDC_main(void);
+	void run();
 
 #endif /* BLDC_FOC_H_ */

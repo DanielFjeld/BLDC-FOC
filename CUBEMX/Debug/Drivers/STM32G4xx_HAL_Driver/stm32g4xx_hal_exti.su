@@ -1,4 +1,4 @@
-C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_exti.c:144:19:HAL_EXTI_SetConfigLine	16	static
+C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_exti.c:144:19:HAL_EXTI_SetConfigLine	20	static
 C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_exti.c:268:19:HAL_EXTI_GetConfigLine	12	static
 C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_exti.c:364:19:HAL_EXTI_ClearConfigLine	12	static
 C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_exti.c:432:19:HAL_EXTI_RegisterCallback	0	static
