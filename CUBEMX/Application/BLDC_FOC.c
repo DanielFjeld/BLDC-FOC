@@ -35,7 +35,6 @@
  * Test slack and repeatability (while driving motor)
  * Test Torque
  *
- *
  * ----------IMPROVEMENTS----------
  * make PID and Limits use int32_t or make float faster
  * try to make loop 50kHz
@@ -92,7 +91,7 @@
 
 int32_t test_val = 0;
 
-#define ZERO_GRAVITY
+//#define ZERO_GRAVITY
 
 //-------------------MISC-----------------
 uint8_t Current_Callback_flag = 0;
@@ -150,12 +149,7 @@ PID_instance Angle_PID = {0};
 
 //-------------------IRQ handlers---------------------
 void Current_IRQ(Current* ptr){
-	#ifdef RUNNING_LED_DEBUG2
-	HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
-	#endif
-
-
-    if(ptr != NULL)memcpy(&IRQ_Current, ptr, sizeof(Current));
+	if(ptr != NULL)memcpy(&IRQ_Current, ptr, sizeof(Current));
     else return;
     Current_Callback_flag = 1;
 }
@@ -297,7 +291,7 @@ Flash *storage;
 
 #define PID_TIMING 10
 void BLDC_main(void){
-	Flash_init();
+	Flash_init(0); // 0 do not update from ram
 	storage = Flash_get_values();
 
 	HAL_Delay(100);
@@ -431,23 +425,22 @@ void run(){
 	memcpy(&IRQ_STATUS_BUFF, &IRQ_Status, sizeof(CAN_Status));
 
 	//FSM
-	if(Status == BLDC_STOPPED_WITH_BREAK && IRQ_STATUS_BUFF.status == INPUT_CALIBRATE_ENCODER)Status = BLDC_CALIBRATING_ENCODER;
+	if(Status == BLDC_STOPPED_WITH_BREAK && IRQ_STATUS_BUFF.status == INPUT_CALIBRATE)Status = BLDC_CALIBRATING_ENCODER;
 	else if(Status == BLDC_STOPPED_WITH_BREAK && IRQ_STATUS_BUFF.status == INPUT_RESET_ERRORS)error = 0;
-	else if(Status == BLDC_STOPPED_WITH_BREAK && IRQ_STATUS_BUFF.status == INPUT_START){
+	else if(Status == BLDC_STOPPED_WITH_BREAK && (
+			IRQ_STATUS_BUFF.status >= INPUT_CTRL_VOLTAGE_Q_SETPOINT &&
+			IRQ_STATUS_BUFF.status <= INPUT_CTRL_ZERO_GRAVITY)){
 		Status = BLDC_RUNNING;
 		SetMode(&Current_PID,  AUTOMATIC);
 		SetMode(&Velocity_PID,  AUTOMATIC);
 		SetMode(&Angle_PID,  AUTOMATIC);
 	}
-	else if(Status == BLDC_RUNNING && IRQ_STATUS_BUFF.status == INPUT_STOP_WITH_BREAK){
+	else if(Status == BLDC_RUNNING && IRQ_STATUS_BUFF.status == INPUT_CTRL_OFF){
 		Status = BLDC_STOPPED_WITH_BREAK;
-		SetMode(&Current_PID,  MANUAL);
-		SetMode(&Velocity_PID,  MANUAL);
-		SetMode(&Angle_PID,  MANUAL);
+//		SetMode(&Current_PID,  MANUAL);
+//		SetMode(&Velocity_PID,  MANUAL);
+//		SetMode(&Angle_PID,  MANUAL);
 	}
-	else if(Status == BLDC_RUNNING && IRQ_STATUS_BUFF.status == INPUT_STOP_AND_SHUTDOWN)Status = BLDC_STOPPED_AND_SHUTDOWN;
-
-
 	//----------------------position-----------------
 	if (last_pos_enc > 270000 && IRQ_Encoders_BUFF.Encoder1_pos < 90000)position_overflow++;
 	else if (last_pos_enc < 90000 && IRQ_Encoders_BUFF.Encoder1_pos > 270000)position_overflow--;
@@ -473,33 +466,58 @@ void run(){
 	Current_PID.Input = q_lpf;
 	Current_PID_offset.Input = d_lpf;
 
-	Angle_PID.Setpoint = 5*360;
-//	Angle_PID.Setpoint = (float)IRQ_STATUS_BUFF.setpoint;
-	Compute(&Angle_PID);
 
-//	Velocity_PID.Setpoint = 20.0;
-	Velocity_PID.Setpoint = Angle_PID.Output;
-	Compute(&Velocity_PID);
-
-	#ifdef ZERO_GRAVITY
-	float weight = 4.7; //amps at 90 degrees;
-	Current_PID.Setpoint = weight*(sinf((((float)IRQ_Encoders_BUFF.Encoder1_pos)/1000+storage->Encoder1_offset)*3.14159264/180));
-	#else
-
-//		Current_PID.Setpoint = 0.3;
-	Current_PID.Setpoint = Velocity_PID.Output;
-
-	#endif
-	Compute(&Current_PID);
-
-	Current_PID_offset.Setpoint = 0;
-	Compute(&Current_PID_offset);
-
-
+	if(IRQ_STATUS_BUFF.status == INPUT_CTRL_ANGLE_SETPOINT){
+		Angle_PID.Setpoint = IRQ_STATUS_BUFF.setpoint;
+		Compute(&Angle_PID);
+		Velocity_PID.Setpoint = Angle_PID.Output;
+		Compute(&Velocity_PID);
+		Current_PID.Setpoint = Velocity_PID.Output;
+		Compute(&Current_PID);
+		Current_PID_offset.Setpoint = 0;
+		Compute(&Current_PID_offset);
+	}
+	else if(IRQ_STATUS_BUFF.status == INPUT_CTRL_VELOCITY_SETPOINT){
+		Velocity_PID.Setpoint = IRQ_STATUS_BUFF.setpoint;
+		Compute(&Velocity_PID);
+		Current_PID.Setpoint = Velocity_PID.Output;
+		Compute(&Current_PID);
+		Current_PID_offset.Setpoint = 0;
+		Compute(&Current_PID_offset);
+	}
+	else if(IRQ_STATUS_BUFF.status == INPUT_CTRL_CURRENT_Q_SETPOINT){
+		Current_PID.Setpoint = IRQ_STATUS_BUFF.setpoint;
+		Compute(&Current_PID);
+		Current_PID_offset.Output = 0;
+	}
+	else if(IRQ_STATUS_BUFF.status == INPUT_CTRL_CURRENT_D_SETPOINT){
+		Current_PID.Output = 0.0f;
+		Current_PID_offset.Setpoint = IRQ_STATUS_BUFF.setpoint;
+		Compute(&Current_PID_offset);
+	}
+	else if(IRQ_STATUS_BUFF.status == INPUT_CTRL_ZERO_GRAVITY){
+		float weight = IRQ_STATUS_BUFF.setpoint; //amps at 90 degrees;
+		Current_PID.Setpoint = weight*(sinf((((float)IRQ_Encoders_BUFF.Encoder1_pos)/1000+storage->Encoder1_offset)*3.14159264/180));
+	}
+	else {
+		Current_PID_offset.Output = 0.0f;
+		Current_PID.Output = 0.0f;
+	}
 
 	//-----------------set PWM--------------------- 3.12us
-	float V_d = Current_PID_offset.Output;
-	float V_q = Current_PID.Output;
+
+	float V_d = 0.0f;
+	float V_q = 0.0f;
+	if(IRQ_STATUS_BUFF.status == INPUT_CTRL_VOLTAGE_Q_SETPOINT){
+		V_q = IRQ_STATUS_BUFF.setpoint;
+	}
+	else if(IRQ_STATUS_BUFF.status == INPUT_CTRL_VOLTAGE_D_SETPOINT){
+		V_d = IRQ_STATUS_BUFF.setpoint;
+	}
+	else{
+		V_d = Current_PID_offset.Output;
+		V_q = Current_PID.Output;
+	}
 	float theta = atan2_approximation2(V_q, V_d)*180.0f/3.14159264f;
 	uint32_t mag = sqrtI((uint32_t)(V_q*V_q+V_d*V_d));
 	mag *= 0.7;
@@ -522,27 +540,82 @@ void run(){
 		Status = BLDC_ERROR;
 		shutoff();
 	}
-	else if (Status == BLDC_STOPPED_AND_SHUTDOWN){
-		shutoff();
-		shutdown();
-	}
 	else if (Status == BLDC_STOPPED_WITH_BREAK){
-//			shutoff();
-		inverter(angle + (int32_t)theta + 360*2, mag, PHASE_ORDER);
+	    shutoff();
+//		inverter(angle + (int32_t)theta + 360*2, mag, PHASE_ORDER);
 		}
 	else if (Status == BLDC_RUNNING){
-		inverter(mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, 0)+error_pos + (int32_t)electrical_offset + (int32_t)theta + 360*2, mag, PHASE_ORDER);
+		inverter(angle + (int32_t)theta + 360*2, mag, PHASE_ORDER);
 	}
 	//--------------send can message------------------ 1us
 	//time keepers
 	timing_CAN_feedback++;
 	running_LED_timing++;
 
+	float CAN_value_fb = IRQ_STATUS_BUFF.setpoint;
+
+	if(Status != BLDC_RUNNING){
+		if(IRQ_STATUS_BUFF.status == INPUT_GET_ANGLE_MAX_LIMIT)CAN_value_fb = 0;
+		else if(IRQ_STATUS_BUFF.status == INPUT_GET_ANGLE_MIN_LIMIT)CAN_value_fb = 0;
+		else if(IRQ_STATUS_BUFF.status == INPUT_GET_ANGLE_kd)CAN_value_fb = storage->Angle_kd;
+		else if(IRQ_STATUS_BUFF.status == INPUT_GET_ANGLE_ki)CAN_value_fb = storage->Angle_ki;
+		else if(IRQ_STATUS_BUFF.status == INPUT_GET_ANGLE_kp)CAN_value_fb = storage->Angle_kp;
+		else if(IRQ_STATUS_BUFF.status == INPUT_GET_CURRENT_D_kd)CAN_value_fb = storage->Current_kd;
+		else if(IRQ_STATUS_BUFF.status == INPUT_GET_CURRENT_D_ki)CAN_value_fb = storage->Current_ki;
+		else if(IRQ_STATUS_BUFF.status == INPUT_GET_CURRENT_D_kp)CAN_value_fb = storage->Current_kp;
+		else if(IRQ_STATUS_BUFF.status == INPUT_GET_CURRENT_LIMIT)CAN_value_fb = storage->Current_limit;
+		else if(IRQ_STATUS_BUFF.status == INPUT_GET_CURRENT_Q_kd)CAN_value_fb = storage->Current_offset_kd;
+		else if(IRQ_STATUS_BUFF.status == INPUT_GET_CURRENT_Q_ki)CAN_value_fb = storage->Current_offset_ki;
+		else if(IRQ_STATUS_BUFF.status == INPUT_GET_CURRENT_Q_kp)CAN_value_fb = storage->Current_offset_kp;
+		else if(IRQ_STATUS_BUFF.status == INPUT_GET_ENCODER_1_OFFSET)CAN_value_fb = storage->Encoder1_offset;
+		else if(IRQ_STATUS_BUFF.status == INPUT_GET_ENCODER_2_GEAR_RATIO)CAN_value_fb = 0;
+		else if(IRQ_STATUS_BUFF.status == INPUT_GET_ENCODER_2_OFFSET)CAN_value_fb = storage->Encoder2_offset;
+		else if(IRQ_STATUS_BUFF.status == INPUT_GET_MOTOR_KV)CAN_value_fb = 0;
+		else if(IRQ_STATUS_BUFF.status == INPUT_GET_VELOCITY_LIMIT)CAN_value_fb = storage->Velocity_limit;
+		else if(IRQ_STATUS_BUFF.status == INPUT_GET_VELOCITY_kd)CAN_value_fb = storage->Velocity_kd;
+		else if(IRQ_STATUS_BUFF.status == INPUT_GET_VELOCITY_ki)CAN_value_fb = storage->Velocity_ki;
+		else if(IRQ_STATUS_BUFF.status == INPUT_GET_VELOCITY_kp)CAN_value_fb = storage->Velocity_kp;
+		else if(IRQ_STATUS_BUFF.status == INPUT_GET_VOLTAGE_LIMIT)CAN_value_fb = 0;
+
+		else if(IRQ_STATUS_BUFF.status == INPUT_SET_ANGLE_MAX_LIMIT)CAN_value_fb = 0;
+		else if(IRQ_STATUS_BUFF.status == INPUT_SET_ANGLE_MIN_LIMIT)CAN_value_fb = 0;
+		else if(IRQ_STATUS_BUFF.status == INPUT_SET_ANGLE_kd)storage->Angle_kd = IRQ_STATUS_BUFF.setpoint;
+		else if(IRQ_STATUS_BUFF.status == INPUT_SET_ANGLE_ki)storage->Angle_ki = IRQ_STATUS_BUFF.setpoint;
+		else if(IRQ_STATUS_BUFF.status == INPUT_SET_ANGLE_kp)storage->Angle_kp = IRQ_STATUS_BUFF.setpoint;
+		else if(IRQ_STATUS_BUFF.status == INPUT_SET_CURRENT_D_kd)storage->Current_kd = IRQ_STATUS_BUFF.setpoint;
+		else if(IRQ_STATUS_BUFF.status == INPUT_SET_CURRENT_D_ki)storage->Current_ki = IRQ_STATUS_BUFF.setpoint;
+		else if(IRQ_STATUS_BUFF.status == INPUT_SET_CURRENT_D_kp)storage->Current_kp = IRQ_STATUS_BUFF.setpoint;
+		else if(IRQ_STATUS_BUFF.status == INPUT_SET_CURRENT_LIMIT){
+			storage->Current_limit = IRQ_STATUS_BUFF.setpoint;
+			SetOutputLimits(&Velocity_PID, (storage->Current_limit*-1.0f), (storage->Current_limit));
+		}
+		else if(IRQ_STATUS_BUFF.status == INPUT_SET_CURRENT_Q_kd)storage->Current_offset_kd = IRQ_STATUS_BUFF.setpoint;
+		else if(IRQ_STATUS_BUFF.status == INPUT_SET_CURRENT_Q_ki)storage->Current_offset_ki = IRQ_STATUS_BUFF.setpoint;
+		else if(IRQ_STATUS_BUFF.status == INPUT_SET_CURRENT_Q_kp)storage->Current_offset_kp = IRQ_STATUS_BUFF.setpoint;
+		else if(IRQ_STATUS_BUFF.status == INPUT_SET_ENCODER_1_OFFSET)storage->Encoder1_offset = IRQ_STATUS_BUFF.setpoint;
+		else if(IRQ_STATUS_BUFF.status == INPUT_SET_ENCODER_2_GEAR_RATIO)CAN_value_fb = 0;
+		else if(IRQ_STATUS_BUFF.status == INPUT_SET_ENCODER_2_OFFSET)storage->Encoder2_offset = IRQ_STATUS_BUFF.setpoint;
+		else if(IRQ_STATUS_BUFF.status == INPUT_SET_MOTOR_KV)CAN_value_fb = 0;
+		else if(IRQ_STATUS_BUFF.status == INPUT_SET_VELOCITY_LIMIT){
+			storage->Velocity_limit = IRQ_STATUS_BUFF.setpoint;
+			SetOutputLimits(&Angle_PID, (storage->Velocity_limit*-1.0f), (storage->Velocity_limit));
+		}
+		else if(IRQ_STATUS_BUFF.status == INPUT_SET_VELOCITY_kd)storage->Velocity_kd = IRQ_STATUS_BUFF.setpoint;
+		else if(IRQ_STATUS_BUFF.status == INPUT_SET_VELOCITY_ki)storage->Velocity_ki = IRQ_STATUS_BUFF.setpoint;
+		else if(IRQ_STATUS_BUFF.status == INPUT_SET_VELOCITY_kp)storage->Velocity_kp = IRQ_STATUS_BUFF.setpoint;
+		else if(IRQ_STATUS_BUFF.status == INPUT_SET_VOLTAGE_LIMIT)CAN_value_fb = 0;
+
+		else if(IRQ_STATUS_BUFF.status == INPUT_SAVE_TO_FLASH)Flash_save();
+
+		else CAN_value_fb = NAN;
+	}
+
+
 	if(timing_CAN_feedback >= LOOP_FREQ_KHZ*5){ //every 5ms
 		timing_CAN_feedback = 0;
 		Feedback.Status_warning = warning;
 		Feedback.Status_faults = error;
-		Feedback.Status_setpoint = IRQ_STATUS_BUFF.setpoint;
+		Feedback.Status_setpoint = CAN_value_fb;
 		Feedback.Status_mode = Status;
 
 		Feedback.Current_Q = q_lpf;
@@ -562,7 +635,6 @@ void run(){
 
 		//-----------------PRINTF DEBUGGING-------------------
 		//will print same info as on CAN-BUS
-
 	}
 
 	//----------------set status LEDs---------------------
@@ -580,6 +652,27 @@ void run(){
 
 	//-----------------update dac---------------------------
 	#ifdef DAC_DEBUG
+	/*
+	 *  DAC min
+	 *  DAC max
+	 *
+	 *  current fase a b c
+	 *  current q
+	 *  current d
+	 *  position encoder 1
+	 *  position encoder 2
+	 *  velocity
+	 *
+	 */
+	float scale_dac_max = 0.0f;
+	float scale_dac_min = 100.0f;
+	float scale_in = 0;
+	uint32_t DAC_in;
+	if(scale_in > scale_dac_max)scale_out = 4095;
+	else if(scale_in < scale_dac_min)scale_out = 0;
+	else{
+		DAC_in = scale_in
+	}
 	dac_value(q/10 +1500);
 	#endif
 }

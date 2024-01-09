@@ -33,8 +33,8 @@
 		float Current_offset_kd;
 
 		//limits
-		uint32_t Current_limit;
-		uint32_t Velocity_limit;
+		float Current_limit;
+		float Velocity_limit;
 
 		//encoder position
 		float Encoder1_offset;
@@ -54,7 +54,7 @@
 		uint64_t PADDING_ZERO;
 	}Flash;
 
-	void Flash_init();
+	void Flash_init(uint8_t RAM_CMP);
 
 	void Flash_save();
 

@@ -4,6 +4,7 @@
  *  Created on: Oct 30, 2023
  *      Author: Daniel
  */
+
 #include "main.h"
 #include "math.h"
 #include <stdlib.h>
@@ -49,7 +50,7 @@ Voltage_Temp VT_data;
 uint16_t calibrating = 0;
 volatile uint32_t Voltage_offset_temp[3] = {0};
 
-void dac_value(uint16_t V_dac){
+void dac_value(float in, float min, float max){
 	uint16_t dac_value = ((V_dac*ADC_RES)/VDDA);
 	HAL_DAC_SetValue(&hdac1, DAC1_CHANNEL_1, DAC_ALIGN_12B_R, dac_value);
 }

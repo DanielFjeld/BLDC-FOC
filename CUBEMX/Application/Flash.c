@@ -43,7 +43,7 @@ Flash RAM = {
 		.Velocity_limit = 4000.0f, //rpm
 		.Current_limit = 20.0f, //ampere
 
-		.Encoder1_offset = 5.0f
+		.Encoder1_offset = -5.0f
 };
 
 uint64_t test_data[2] = {0};
@@ -71,8 +71,8 @@ void flash_write(uint32_t page, uint64_t data[], uint32_t size){
     HAL_FLASH_Lock();
 }
 
-void Flash_init(){
-	if (memcmp(ptr, &RAM, RAM_COMPARE)){
+void Flash_init(uint8_t RAM_CMP){
+	if (memcmp(ptr, &RAM, RAM_COMPARE) && RAM_CMP){
 		memcpy(&Stored_in_RAM, ptr, sizeof(Flash));
 		memcpy(&Stored_in_RAM, &RAM, RAM_COMPARE);
 		Flash_save();
