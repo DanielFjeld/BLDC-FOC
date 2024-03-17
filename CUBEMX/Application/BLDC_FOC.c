@@ -291,7 +291,7 @@ Flash *storage;
 
 #define PID_TIMING 10
 void BLDC_main(void){
-	Flash_init(0); // 0 do not update from ram
+	Flash_init(1); // 0 do not update from ram
 	storage = Flash_get_values();
 
 	HAL_Delay(100);
@@ -335,7 +335,7 @@ void BLDC_main(void){
 	voltage_temperature_init((void*)&Voltage_Temp_IRQ);
 	//setup CAN
 	//-----------------CAN----------------------
-	FDCAN_addCallback(&hfdcan1, (CAN_STATUS_ID << 8) 		| (CAN_DEVICE_ID << 4) | (CAN_BLDC_ID << 0), (void*)&Can_RX_Status_IRQ);
+	FDCAN_addCallback(&hfdcan1, CAN_RX_ID, (void*)&Can_RX_Status_IRQ);
 //	FDCAN_addCallback(&hfdcan1, (CAN_PID_ID << 8) 	| (CAN_DEVICE_ID << 4) | (CAN_BLDC_ID << 0), (void*)&Can_RX_PID_IRQ);
 
 	FDCAN_Start(&hfdcan1);
@@ -424,6 +424,12 @@ void run(){
 	memcpy(&IRQ_Encoders_BUFF, &IRQ_Encoders, sizeof(Encoders));
 	memcpy(&IRQ_STATUS_BUFF, &IRQ_Status, sizeof(CAN_Status));
 
+	//----------------------TEST-----------------
+//		IRQ_STATUS_BUFF.setpoint = 60;
+//		Status == BLDC_RUNNING;
+//		IRQ_STATUS_BUFF.status = INPUT_CTRL_CURRENT_D_SETPOINT;
+
+
 	//FSM
 	if(Status == BLDC_STOPPED_WITH_BREAK && IRQ_STATUS_BUFF.status == INPUT_CALIBRATE)Status = BLDC_CALIBRATING_ENCODER;
 	else if(Status == BLDC_STOPPED_WITH_BREAK && IRQ_STATUS_BUFF.status == INPUT_RESET_ERRORS)error = 0;
@@ -466,6 +472,9 @@ void run(){
 	Current_PID.Input = q_lpf;
 	Current_PID_offset.Input = d_lpf;
 
+
+
+	//-------------------------------------------
 
 	if(IRQ_STATUS_BUFF.status == INPUT_CTRL_ANGLE_SETPOINT){
 		Angle_PID.Setpoint = IRQ_STATUS_BUFF.setpoint;
@@ -631,7 +640,7 @@ void run(){
 		Feedback.Position_Encoder2_pos = IRQ_Encoders_BUFF.Encoder2_pos/1000.0f;
 		Feedback.Position_Calculated_pos = Angle_PID.Input;
 		Feedback.Position_Velocity = IRQ_Encoders_BUFF.Velocity/1000.0f;
-		FDCAN_sendData(&hfdcan1, (CAN_FEEDBACK_ID << 8) 	| (CAN_DEVICE_ID << 4) | (CAN_BLDC_ID << 0), (uint8_t*)&Feedback);
+		FDCAN_sendData(&hfdcan1, CAN_TX_ID, (uint8_t*)&Feedback);
 
 		//-----------------PRINTF DEBUGGING-------------------
 		//will print same info as on CAN-BUS
@@ -664,16 +673,16 @@ void run(){
 	 *  velocity
 	 *
 	 */
-	float scale_dac_max = 0.0f;
-	float scale_dac_min = 100.0f;
-	float scale_in = 0;
-	uint32_t DAC_in;
-	if(scale_in > scale_dac_max)scale_out = 4095;
-	else if(scale_in < scale_dac_min)scale_out = 0;
-	else{
-		DAC_in = scale_in
-	}
-	dac_value(q/10 +1500);
+//	float scale_dac_max = 0.0f;
+//	float scale_dac_min = 100.0f;
+//	float scale_in = 0;
+//	uint32_t DAC_in;
+//	if(scale_in > scale_dac_max)scale_out = 4095;
+//	else if(scale_in < scale_dac_min)scale_out = 0;
+//	else{
+//		DAC_in = scale_in
+//	}
+//	dac_value(q/10 +1500);
 	#endif
 }
 

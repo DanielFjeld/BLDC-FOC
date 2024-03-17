@@ -50,10 +50,10 @@ Voltage_Temp VT_data;
 uint16_t calibrating = 0;
 volatile uint32_t Voltage_offset_temp[3] = {0};
 
-void dac_value(float in, float min, float max){
-	uint16_t dac_value = ((V_dac*ADC_RES)/VDDA);
-	HAL_DAC_SetValue(&hdac1, DAC1_CHANNEL_1, DAC_ALIGN_12B_R, dac_value);
-}
+//void dac_value(float in, float min, float max){
+//	uint16_t dac_value = ((V_dac*ADC_RES)/VDDA);
+//	HAL_DAC_SetValue(&hdac1, DAC1_CHANNEL_1, DAC_ALIGN_12B_R, dac_value);
+//}
 
 void ADC_CAL(){
 	VDDA = (int16_t)3000*(*vrefint)/(adc_result_DMA[3]/number_of_oversample);

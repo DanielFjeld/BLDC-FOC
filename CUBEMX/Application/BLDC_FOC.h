@@ -10,19 +10,23 @@
 	#include "math.h"
 
 
+
 	//CAN ID = (BLDC ID)(DEVICE ID)(TYPE ID) = 11bits
 	//same on all BLDC devices as unique ID
-	#define CAN_BLDC_ID 0x6 //4bit value
+	//#define CAN_BLDC_ID 0x6 //4bit value
 
 	//needs to be different on every BLDC module on the BUS
-	#define CAN_DEVICE_ID 0x3 //4bit value 0x0 to 0xF
+	//#define CAN_DEVICE_ID 0x3 //4bit value 0x0 to 0xF
 
 	//TYPE ID on CAN messages received from ECU
-	#define CAN_STATUS_ID 0x0
+	//#define CAN_STATUS_ID 0x0
 
 	//TYPE ID on CAN messages transmitted form the device (3 bits)
-	#define CAN_FEEDBACK_ID 0x4      	//transmitted every ms
-	#define CAN_PID_ID 0x5
+	//#define CAN_FEEDBACK_ID 0x4      	//transmitted every ms
+	//#define CAN_PID_ID 0x5
+
+#define CAN_RX_ID 0x11
+#define CAN_TX_ID 0x22
 
 	//------MOTOR PARAM-----------------
 	#define polepairs 17

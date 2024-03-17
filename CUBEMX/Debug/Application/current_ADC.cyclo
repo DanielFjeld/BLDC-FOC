@@ -1,4 +1,3 @@
-../Application/current_ADC.c:53:6:dac_value	1
 ../Application/current_ADC.c:58:6:ADC_CAL	2
 ../Application/current_ADC.c:72:6:current_init	1
 ../Application/current_ADC.c:84:6:voltage_temperature_init	1
