@@ -9,4 +9,4 @@
 ../Application/BLDC_FOC.c:246:7:atan2_approximation2	24	static
 ../Application/BLDC_FOC.c:293:6:BLDC_main	24	static
 ../Application/BLDC_FOC.c:416:6:run	72	static
-../Application/BLDC_FOC.c:689:9:mech_to_el_deg	24	static
+../Application/BLDC_FOC.c:697:9:mech_to_el_deg	24	static

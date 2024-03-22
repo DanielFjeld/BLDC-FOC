@@ -85,7 +85,7 @@
 //#define Status_debug
 #define Position_debug
 
-//#define CALIBRATE_ON_STARTUP
+#define CALIBRATE_ON_STARTUP
 
 #define DAC_DEBUG
 
@@ -414,6 +414,7 @@ void BLDC_main(void){
 }
 
 void run(){
+
 	#ifdef RUNNING_LED_DEBUG
 //	HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 1);
 //	HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 0);
@@ -425,9 +426,12 @@ void run(){
 	memcpy(&IRQ_STATUS_BUFF, &IRQ_Status, sizeof(CAN_Status));
 
 	//----------------------TEST-----------------
-//		IRQ_STATUS_BUFF.setpoint = 60;
-//		Status == BLDC_RUNNING;
-//		IRQ_STATUS_BUFF.status = INPUT_CTRL_CURRENT_D_SETPOINT;
+	if(Status != BLDC_CALIBRATING_ENCODER){
+		IRQ_STATUS_BUFF.setpoint = 50;
+		Status == BLDC_RUNNING;
+		IRQ_STATUS_BUFF.status = INPUT_CTRL_VOLTAGE_Q_SETPOINT;
+	}
+
 
 
 	//FSM
@@ -447,6 +451,8 @@ void run(){
 //		SetMode(&Velocity_PID,  MANUAL);
 //		SetMode(&Angle_PID,  MANUAL);
 	}
+
+
 	//----------------------position-----------------
 	if (last_pos_enc > 270000 && IRQ_Encoders_BUFF.Encoder1_pos < 90000)position_overflow++;
 	else if (last_pos_enc < 90000 && IRQ_Encoders_BUFF.Encoder1_pos > 270000)position_overflow--;
@@ -554,7 +560,9 @@ void run(){
 //		inverter(angle + (int32_t)theta + 360*2, mag, PHASE_ORDER);
 		}
 	else if (Status == BLDC_RUNNING){
-		inverter(angle + (int32_t)theta + 360*2, mag, PHASE_ORDER);
+		if(mag > 100)shutoff;
+		else
+			inverter(angle + (int32_t)theta + 360*2, mag, PHASE_ORDER);
 	}
 	//--------------send can message------------------ 1us
 	//time keepers

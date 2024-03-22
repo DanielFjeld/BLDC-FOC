@@ -19,7 +19,7 @@
 #include "print_server.h"
 #include "math.h"
 
-#define CAL_DUTY 100
+#define CAL_DUTY 300
 
 //uint32_t find_closest(float arr[], int length, float target);
 
