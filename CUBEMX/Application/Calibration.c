@@ -19,7 +19,7 @@
 #include "print_server.h"
 #include "math.h"
 
-#define CAL_DUTY 100
+#define CAL_DUTY 400
 
 //uint32_t find_closest(float arr[], int length, float target);
 
@@ -28,12 +28,55 @@
 
 
 float error_filt[SIZE*NPP] = {0};
+float error_filt_temp[SIZE*NPP] = {0};
 
 uint8_t PHASE_ORDER = 0;
 float electrical_offset = 0;
 float pi = 3.14159265f;
 
 uint32_t motor_lut[LUT_SIZE];
+
+#define MAX_IIR 16
+typedef struct IIR{
+	uint8_t size;
+	float Coef_a[MAX_IIR];
+	float Coef_b[MAX_IIR];
+
+	float last_x[MAX_IIR];
+	float last_y[MAX_IIR];
+}IIR_t;
+
+float IIR(IIR_t *handler, float in){
+
+	//----------SHIFT LAST VALUES
+	for(int i = handler->size; i > 0; i--)handler->last_y[i] = handler->last_y[i-1]; //delay input
+	for(int i = handler->size; i > 0; i--)handler->last_x[i] = handler->last_x[i-1]; //delay output
+	handler->last_x[0] = in;
+
+	//----------CALCULATE NEXT OUTPUT
+	float y = 0;
+	for(int i = 0; i <= handler->size; i++)y +=  handler->Coef_b[i]*handler->last_x[i];
+	for(int i = 1; i <= handler->size; i++)y -=  handler->Coef_a[i]*handler->last_y[i];
+	handler->last_y[0] = y;
+
+	//----------RETURN OUTPUT
+	return y;
+}
+IIR_t LPF1 = {
+		.size = 3,
+		.Coef_a = {
+			1.0f,
+			-1.99f,
+			0.99f
+		},
+		.Coef_b = {
+			0.0015f,
+			0.0029f,
+			0.0015f
+		},
+		.last_x = {0},
+		.last_y = {0}
+};
 
 void order_phases(Encoders *ps, Current *cs){ //, GPIOStruct *gpio, ControllerStruct *controller, PreferenceWriter *prefs
 
@@ -89,6 +132,23 @@ void order_phases(Encoders *ps, Current *cs){ //, GPIOStruct *gpio, ControllerSt
     HAL_Delay(10);
     }
 
+float error_temp = 0.0f;
+
+float aa_test_3 = 0;
+float aa_test_4 = 0;
+
+void smoothArray(float *arr, int size) {
+    float prev, current;
+
+    if (size < 3) return; // Not enough elements to smooth
+
+    prev = arr[0];
+    for (int i = 1; i < size - 1; i++) {
+        current = arr[i];
+        arr[i] = (prev + arr[i] + arr[i + 1]) / 3;
+        prev = current;
+    }
+}
 
 void calibrate(Encoders *ps, Current *cs){ //, PositionSensor *ps, GPIOStruct *gpio, ControllerStruct *controller, PreferenceWriter *prefs
     /// Measures the electrical angle offset of the position sensor
@@ -104,7 +164,12 @@ void calibrate(Encoders *ps, Current *cs){ //, PositionSensor *ps, GPIOStruct *g
 
 
    float theta_ref = 0;
+   float theta_ref_last = 0;
+   int8_t theta_ref_count = 0;
+
    float theta_actual = 0;
+   float theta_actual_last = 0;
+   int8_t theta_actual_count = 0;
 
    float d;
    float q;
@@ -136,8 +201,16 @@ void calibrate(Encoders *ps, Current *cs){ //, PositionSensor *ps, GPIOStruct *g
         inverter((int16_t)theta_ref, CAL_DUTY, PHASE_ORDER);
         HAL_Delay(1);
        theta_actual = (float)ps->Encoder1_pos/1000; //fixed position
-       error_f[i] = theta_ref/NPP - theta_actual;
-	   if(error_f[i] < 0)error_f [i] = error_f[i]+ 360.0f;
+       if(!i)theta_actual_last=theta_actual;
+
+       if(theta_actual-theta_actual_last < -90) theta_actual_count--;
+       if(theta_actual-theta_actual_last > 90) theta_actual_count++;
+       theta_actual_last = theta_actual;
+
+       //aa_test_3 = theta_ref/NPP;
+       aa_test_4 = theta_actual+theta_actual_count*360;
+       error_temp = (theta_ref/NPP - theta_actual+theta_actual_count*360);
+       error_f[i] = error_temp;
        raw_f[i] = ps->Encoder1_pos_raw; //raw position
        PrintServerPrintf("%.4f %.4f%d\n\r", theta_ref/(NPP), theta_actual, raw_f[i]);
         }
@@ -148,9 +221,18 @@ void calibrate(Encoders *ps, Current *cs){ //, PositionSensor *ps, GPIOStruct *g
        theta_ref -= delta;
        inverter((int16_t)theta_ref, CAL_DUTY, PHASE_ORDER);
        HAL_Delay(1);                                                         // sample position sensor
-       theta_actual = (float)ps->Encoder1_pos/1000;                                   // get mechanical position
-       error_b[i] = theta_ref/NPP - theta_actual;
-       if(error_b[i] < 0)error_b[i] = error_b[i]+ 360.0f;
+       theta_actual = (float)ps->Encoder1_pos/1000;
+
+       if(theta_actual-theta_actual_last < -90) theta_actual_count--;
+	   if(theta_actual-theta_actual_last > 90) theta_actual_count++;
+	   theta_actual_last = theta_actual;
+
+	   aa_test_4 = theta_actual+theta_actual_count*360;
+	   error_temp = (theta_ref/NPP - theta_actual+theta_actual_count*360);
+       error_b[i] = error_temp;
+
+       aa_test_3 = 0.5f*(error_b[i] + error_f[n-i-1]);
+
        raw_b[i] =  ps->Encoder1_pos_raw;
        PrintServerPrintf("%.4f %.4f %d\n\r", theta_ref/(NPP), theta_actual, raw_b[i]);
        //theta_ref -= delta;
@@ -163,99 +245,12 @@ void calibrate(Encoders *ps, Current *cs){ //, PositionSensor *ps, GPIOStruct *g
             }
         electrical_offset = fmod(electrical_offset*NPP, 360);                                        // convert mechanical angle to electrical angle
 
-        /// Perform filtering to linearize position sensor eccentricity
-        /// FIR n-sample average, where n = number of samples in one electrical cycle
-        /// This filter has zero gain at electrical frequency and all integer multiples
-        /// So cogging effects should be completely filtered out.
-
-
-        float mean = 0;
-        for (int i = 0; i<n; i++){                                              //Average the forward and back directions
-            error[i] = 0.5f*(error_f[i] + error_b[n-i-1]);
-            }
         for (int i = 0; i<n; i++){
-            for(int j = 0; j<window; j++){
-                int ind = -window/2 + j + i;                                    // Indexes from -window/2 to + window/2
-                if(ind<0){
-                    ind += n;}                                                  // Moving average wraps around
-                else if(ind > n-1) {
-                    ind -= n;}
-                if(error[ind] == NAN)while(1);
-                error_filt[i] += error[ind]/(float)window;
-                if(error_filt[i] == NAN)while(1);
-                }
-            if(i<window){
-                cogging_current[i] = current*sinf((error[i] - error_filt[i])*NPP);
-                }
-//            PrintServerPrintf("%.4f   %4f    %.4f   %.4f\n\r", error[i], error_filt[i], error_f[i], error_b[i]);
-//            HAL_Delay(10);
-            mean += error_filt[i]/n;
-            }
-        int raw_offset = (raw_f[0] + raw_b[n-1])/2;                             //Insensitive to errors in this direction, so 2 points is plenty
+        	error_filt[i] = 0.5f*(error_f[i] + error_b[n-i-1]);
+        }
+
+        //smoothArray(error_filt, n);
 
 
-//        PrintServerPrintf("\n\r Encoder non-linearity compensation table\n\r");
-//        PrintServerPrintf("Sample Number : Lookup Index : Lookup Value\n\r\n\r");
-//        for (int i = 0; i<n_lut; i++){                                          // build lookup table
-//            int ind = (raw_offset>>7) + i;
-//            if(ind > (n_lut-1)){
-//                ind -= n_lut;
-//                }
-//            lut[ind] = (int) (((error_filt[i] - mean)*(float)(CPR)/(360.0f)));
-//            PrintServerPrintf("%d %d %d\n\r", i, ind, lut[ind]);
-//            HAL_Delay(10);
-//            }
-
-//        ps->WriteLUT(lut);                                                      // write lookup table to position sensor object
-        //memcpy(controller->cogging, cogging_current, sizeof(controller->cogging));  //compensation doesn't actually work yet....
-
-//        memcpy(&ENCODER_LUT, lut, 128*4);                                 // copy the lookup table to the flash array
         PrintServerPrintf("\n\rEncoder Electrical Offset (deg) %f\n\r",  electrical_offset);
-//
-//        float error_test[SIZE*NPP] = {0};
-//        for(int i = 0; i < SIZE*NPP; i++){
-//        	error_test[i] = error_filt[i] + i * 360.0 / (SIZE*NPP);
-//        	if(error_test[i] > 360.0f)error_test[i] -= 360.0f;
-//        }
-//        for (int i = 0; i<LUT_SIZE; i++){
-//        	float wanted_pos = i *360.0f / LUT_SIZE;
-//        	motor_lut[i] = find_closest(error_test, SIZE*NPP, wanted_pos);
-//        	PrintServerPrintf("%d\n\r", motor_lut[i]);
-//        }
     }
-
-// Function to find the closest number in the array
-//uint32_t find_closest(float arr[], int length, float target){
-//    float smallest_diff = arr[0] - target;
-//    if(smallest_diff < 0)smallest_diff = -1*smallest_diff;
-//    uint32_t index = 0;
-//
-//    for (int i = 1; i < length; i++) {
-//    	float diff;
-//        diff = arr[i] - target;
-//        if(diff < 0)diff = -1*diff;
-//
-//        if (diff < smallest_diff) {
-//            smallest_diff = diff;
-//            index = i;
-//        }
-//
-//        diff = arr[i] - target - 360.0f;
-//        if(diff < 0)diff = -1*diff;
-//
-//		if (diff < smallest_diff) {
-//		smallest_diff = diff;
-//		index = i;
-//		}
-//
-//		diff = arr[i] - target + 360.0f;
-//		if(diff < 0)diff = -1*diff;
-//
-//		if (diff < smallest_diff) {
-//		  smallest_diff = diff;
-//		  index = i;
-//		}
-//
-//    }
-//    return index; //(index*360000)/length;
-//}

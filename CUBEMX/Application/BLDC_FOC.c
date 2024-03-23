@@ -86,13 +86,21 @@
 //#define Status_debug
 #define Position_debug
 
-//#define CALIBRATE_ON_STARTUP
+#define CALIBRATE_ON_STARTUP
 
 #define DAC_DEBUG
 
+int16_t angle = 0;
+float error_pos = 0;
+float aa_test1 = 0.0f;
+int32_t aa_test2;
+
+//debug
+
+
 int32_t test_val = 0;
 
-#define ZERO_GRAVITY
+//#define ZERO_GRAVITY
 
 //-------------------MISC-----------------
 uint8_t Current_Callback_flag = 0;
@@ -458,11 +466,14 @@ void run(){
 	float q;
 	int16_t index_error = (int16_t)(IRQ_Encoders_BUFF.Encoder1_pos/1000)%360;// - electrical_offset);
 	uint16_t index_error2 = ((((index_error-mech_offset+360)%360)*(SIZE*NPP))/360)%(SIZE*NPP);
-	int32_t error_pos = (int32_t)(((error_filt[index_error2] - error_filt[0])/**NPP*/)); //((int32_t)(error_filt[index_error2] - (int32_t)error_filt[0])*17);
-
+	error_pos = (((error_filt[index_error2] - error_filt[0]))*NPP);
+	aa_test1 = error_filt[index_error2];
+	aa_test2 = error_pos;
 	//mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, 0) + (int32_t)electrical_offset
-	int16_t angle = (mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, 0)  + error_pos  + (int32_t)electrical_offset + 2*360)%360;
-	dq0((float)angle*3.14159264f/180.0f, ((float)IRQ_Current_BUFF.Current_M3/1000.0f), ((float)IRQ_Current_BUFF.Current_M2/1000.0f), ((float)IRQ_Current_BUFF.Current_M1/1000.0f), &d, &q);
+	angle = (mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos + (int32_t)error_filt[0]*1000, 0)  + (int16_t)(error_pos) + 2*360)%360;
+
+	//dq0((float)angle*3.14159264f/180.0f, ((float)IRQ_Current_BUFF.Current_M3/1000.0f), ((float)IRQ_Current_BUFF.Current_M2/1000.0f), ((float)IRQ_Current_BUFF.Current_M1/1000.0f), &d, &q);
+	dq0((float)angle*3.14159264f/180.0f, ((float)IRQ_Current_BUFF.Current_M2/1000.0f), ((float)IRQ_Current_BUFF.Current_M3/1000.0f), ((float)IRQ_Current_BUFF.Current_M1/1000.0f), &d, &q);
 
 	float q_lpf = Update_FIR_filter(q);
 	float d_lpf = Update_FIR_filter2(d);
@@ -486,20 +497,20 @@ void run(){
 	Current_PID.Setpoint = weight*(sinf((((float)IRQ_Encoders_BUFF.Encoder1_pos)/1000+storage->Encoder1_offset)*3.14159264/180));
 	#else
 
-//		Current_PID.Setpoint = 0.3;
+//    Current_PID.Setpoint = 0.5;
 	Current_PID.Setpoint = Velocity_PID.Output;
 
 	#endif
 	Compute(&Current_PID);
 
-	Current_PID_offset.Setpoint = 0;
+//	Current_PID_offset.Setpoint = 0;
 	Compute(&Current_PID_offset);
 
 
 
 	//-----------------set PWM--------------------- 3.12us
-	float V_d = Current_PID_offset.Output;
-	float V_q = Current_PID.Output;
+	float V_d = 100; //Current_PID_offset.Output;
+	float V_q = 0; //Current_PID.Output;
 	float theta = atan2_approximation2(V_q, V_d)*180.0f/3.14159264f;
 	uint32_t mag = sqrtI((uint32_t)(V_q*V_q+V_d*V_d));
 	mag *= 0.7;
