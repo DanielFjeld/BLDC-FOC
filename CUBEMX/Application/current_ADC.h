@@ -15,8 +15,8 @@
 	}Current;
 
 	typedef struct Voltage_Temp{
-		uint32_t V_Bat;
-		uint16_t V_aux;
+		float V_Bat;
+		float V_aux;
 		int16_t Temp_NTC1;
 		int16_t Temp_NTC2;
 	}Voltage_Temp;

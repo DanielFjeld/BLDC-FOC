@@ -66,11 +66,11 @@ void ORBIS_init(Encoders_Callback __IRQ_callback){
 
 float velocity_accumulate;
 int32_t last_pos = 0;
-#define velocity_lpf_size 4
+#define velocity_lpf_size 30
 uint8_t velocity_index = 0;
 float velocity_array[velocity_lpf_size] = {0};
 
-
+float velocity_calc;
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi)
 {
 	if (hspi == &hspi1) {
@@ -83,15 +83,15 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi)
 		if(((int32_t)data_encoders.Encoder1_pos - last_pos) > 180000)velocity_temp = ((int32_t)data_encoders.Encoder1_pos-last_pos - 360000);
 		else if(((int32_t)data_encoders.Encoder1_pos - last_pos) < -180000)velocity_temp = ((int32_t)data_encoders.Encoder1_pos-last_pos + 360000);
 		else velocity_temp = ((int32_t)data_encoders.Encoder1_pos-last_pos);
-		last_pos = (int32_t)data_encoders.Encoder1_pos;
+		last_pos = data_encoders.Encoder1_pos;
 
 		velocity_accumulate += velocity_temp;
 		velocity_accumulate -= velocity_array[velocity_index];
 		velocity_array[velocity_index] = velocity_temp;
 		velocity_index++;
 		if (velocity_index == velocity_lpf_size)velocity_index = 0;
-
-		data_encoders.Velocity = (int32_t)((velocity_accumulate*10000.0f*60.0f)/360.0f/velocity_lpf_size);
+		velocity_calc = ((velocity_accumulate*10000.0f*60.0f)/360.0f/velocity_lpf_size)/1000.0f;
+		data_encoders.Velocity = velocity_calc;
 		data_encoders.Encoder1_temp_x10 = (int16_t)(((uint16_t)(SPI1_rx_buff[2] << 8 | (SPI1_rx_buff[3]))));
 	}
 	if (hspi == &hspi3) {

@@ -26,6 +26,8 @@
 
 #define pi 3.14159264f
 
+uint32_t aa_test_ADC = 0;
+
 //DMA data
 volatile uint32_t adc_result_DMA[number_of_channels*2]; //current
 volatile uint32_t VT_adc_result_DMA[number_of_VT_channels*2]; //voltage temperature
@@ -98,9 +100,10 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
 		}
 	}
 	if (hadc == &hadc2){
+		aa_test_ADC = VT_adc_result_DMA[3];
 		VT_data.Temp_NTC2 = (VT_adc_result_DMA[1]/number_of_VT_oversample*VDDA)/ADC_RES;
-		VT_data.V_Bat = (VT_adc_result_DMA[2]/number_of_VT_oversample*VDDA*34)/ADC_RES;
-		VT_data.V_aux = (VT_adc_result_DMA[3]/number_of_VT_oversample*VDDA*57)/ADC_RES/10;
+		VT_data.V_aux = (float)(VT_adc_result_DMA[2]/number_of_VT_oversample*VDDA*5.7f)/ADC_RES/1000.0f;
+		VT_data.V_Bat = (float)(VT_adc_result_DMA[3]/number_of_VT_oversample*VDDA*34.0f)/ADC_RES/1000.0f+1.8f;
 		VT_IRQ_callback(&VT_data);
 	}
 }
@@ -112,13 +115,13 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc){
 		data.Current_M3 = -(int32_t)(((((int32_t)adc_result_DMA[4]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[2])*50;
 		Curent_IRQ_callback(&data);
 	}
-	if (hadc == &hadc2){
-		VT_data.Temp_NTC1 = 0; //(VT_adc_result_DMA[4]/number_of_VT_oversample*VDDA)/ADC_RES * ;
-		VT_data.Temp_NTC2 = (VT_adc_result_DMA[5]/number_of_VT_oversample*VDDA)/ADC_RES;
-		VT_data.V_Bat = (VT_adc_result_DMA[6]/number_of_VT_oversample*VDDA*34)/ADC_RES;
-		VT_data.V_aux = (VT_adc_result_DMA[7]/number_of_VT_oversample*VDDA*57)/ADC_RES/10;
-		VT_IRQ_callback(&VT_data);
-	}
+//	if (hadc == &hadc2){
+//		VT_data.Temp_NTC1 = 0; //(VT_adc_result_DMA[4]/number_of_VT_oversample*VDDA)/ADC_RES * ;
+//		VT_data.Temp_NTC2 = (VT_adc_result_DMA[5]/number_of_VT_oversample*VDDA)/ADC_RES;
+//		VT_data.V_Bat = (VT_adc_result_DMA[6]/number_of_VT_oversample*VDDA*34)/ADC_RES;
+//		VT_data.V_aux = (VT_adc_result_DMA[7]/number_of_VT_oversample*VDDA*57)/ADC_RES/10;
+//		VT_IRQ_callback(&VT_data);
+//	}
 }
 
 void dq0(float theta, float a, float b, float c, float *d, float *q){
