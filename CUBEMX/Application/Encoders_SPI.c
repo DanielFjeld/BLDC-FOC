@@ -70,14 +70,39 @@ int32_t last_pos = 0;
 uint8_t velocity_index = 0;
 float velocity_array[velocity_lpf_size] = {0};
 
+int32_t last_pos_dt = -1;
+
+uint32_t aaa_test_pos_delete1 = 0;
+uint32_t aaa_test_pos_delete2 = 0;
+uint32_t aaa_test_pos_delete3 = 0;
+
 float velocity_calc;
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi)
 {
 	if (hspi == &hspi1) {
 		HAL_GPIO_WritePin(ENCODER1_CS_GPIO_Port, ENCODER1_CS_Pin, 1);
-		data_encoders.Calculated_pos = SPI1_rx_buff[0]; //(SPI1_rx_buff[3] << 8) | (SPI1_rx_buff[2]);
-		data_encoders.Encoder1_pos = (uint32_t)(((uint32_t)(SPI1_rx_buff[0] << 6) | (SPI1_rx_buff[1] >> 2)) * 5625) >> 8;
+
+
+		//data_encoders.Calculated_pos = SPI1_rx_buff[0]; //(SPI1_rx_buff[3] << 8) | (SPI1_rx_buff[2]);
+		int32_t temp_Encoder1_pos = (int32_t)(((uint32_t)(SPI1_rx_buff[0] << 6) | (SPI1_rx_buff[1] >> 2)) * 5625) >> 8;
 		data_encoders.Encoder1_pos_raw = (uint32_t)(SPI1_rx_buff[0] << 6) | (SPI1_rx_buff[1] >> 2);
+
+		if(last_pos_dt < 0)last_pos_dt = temp_Encoder1_pos; //startup
+
+		int32_t last_pos_dt_check = temp_Encoder1_pos-last_pos_dt;
+		if(temp_Encoder1_pos > 0){
+			last_pos_dt = temp_Encoder1_pos;}
+		else{
+			uint8_t hei = 0;
+		}
+		if(temp_Encoder1_pos > 360000 || temp_Encoder1_pos < 0){
+			uint8_t hei = 0;
+		}
+
+		data_encoders.Encoder1_pos = last_pos_dt;
+		aaa_test_pos_delete1 = last_pos_dt;
+		aaa_test_pos_delete2 = last_pos_dt;
+		aaa_test_pos_delete3 = last_pos_dt;
 
 		float velocity_temp;
 		if(((int32_t)data_encoders.Encoder1_pos - last_pos) > 180000)velocity_temp = ((int32_t)data_encoders.Encoder1_pos-last_pos - 360000);

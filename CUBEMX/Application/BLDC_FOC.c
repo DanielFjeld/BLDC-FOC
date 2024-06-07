@@ -87,6 +87,7 @@
 #define Position_debug
 
 //#define CALIBRATE_ON_STARTUP
+//#define DONT_USE_CALIBRATION
 
 #define DAC_DEBUG
 
@@ -471,6 +472,9 @@ void run(){
 	int16_t index_error = (int16_t)(IRQ_Encoders_BUFF.Encoder1_pos/1000)%360;// - electrical_offset);
 	uint16_t index_error2 = ((((index_error-mech_offset+360)%360)*(SIZE*NPP))/360)%(SIZE*NPP);
 	error_pos = (((error_filt[index_error2] - error_filt[0]))*NPP);
+#ifdef DONT_USE_CALIBRATION
+	error_pos = error_filt[0]*NPP;
+#endif
 	aa_test1 = error_filt[index_error2];
 	aa_test2 = error_pos;
 	//mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, 0) + (int32_t)electrical_offset
@@ -520,7 +524,7 @@ void run(){
 
 	//-----------------set PWM--------------------- 3.12us
 	float V_d = 0;//Current_PID_offset.Output;
-	float V_q = 0; //Current_PID.Output;
+	float V_q = 200; //Current_PID.Output;
 	if(V_d == 0 && V_q == 0) V_q = 1; //silly hot fix to not make atan to go wank
 	float theta = atan2_approximation2(V_q, V_d)*180.0f/3.14159264f;
 	uint32_t mag = sqrtI((uint32_t)(V_q*V_q+V_d*V_d));
@@ -551,6 +555,7 @@ void run(){
 	else if (Status == BLDC_STOPPED_WITH_BREAK){
 //			shutoff();
 		inverter(angle + (int32_t)theta + 360*2, mag, PHASE_ORDER);
+		//inverter(angle + (int32_t)theta + 360*2, mag, 0);
 		}
 	else if (Status == BLDC_RUNNING){
 			}
@@ -608,8 +613,8 @@ void run(){
 int16_t mech_to_el_deg(int32_t angle_deg, int32_t offset_deg){
 	float temp = (float)(angle_deg-offset_deg+360000*2);
 	while (temp > 360000) temp = temp-360000;
-	while (temp > (360000/17)) temp = temp-deg_pr_pole;
-	temp = temp*17/1000;
+	while (temp > (360000/NPP)) temp = temp-deg_pr_pole;
+	temp = temp*NPP/1000;
 	while (temp > 360) temp -= 360;
 	if(temp < 0) return 0;
 	else if(temp > 360) return 360;
