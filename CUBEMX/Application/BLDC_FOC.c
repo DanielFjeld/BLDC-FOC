@@ -75,7 +75,17 @@
 
 #include "Calibration.h"
 
-#define LOOP_FREQ_KHZ 30
+//-----------------------------------
+//      SETUP
+#define VBAT 12           //volt
+#define MAX_VOLTAGE 5.2       //volt
+#define MAX_Current 1       //amp
+#define MAX_VELOCITY 1000   //RPM
+#define MIN_POSITION 0      //degrees
+#define MAX_POSITION 360    //degrees
+//-----------------------------
+
+#define LOOP_FREQ_KHZ 10
 
 #define RUNNING_LED_DEBUG
 #define PRINT_DEBUG
@@ -88,6 +98,13 @@
 
 //#define CALIBRATE_ON_STARTUP
 //#define DONT_USE_CALIBRATION
+#define CURRENT_PID_CHECK_DEBUG
+float current_can_data[16] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+uint8_t current_can_data_index = 0;
+
+
+//#define SEND_CAN_DATA
+
 
 #define DAC_DEBUG
 
@@ -313,7 +330,7 @@ void BLDC_main(void){
 	//----------------PID---------
 	SetSampleTime(&Current_PID, PID_TIMING); //40us = 25kHz
 	SetTunings(&Current_PID, storage->Current_kp, storage->Current_ki, storage->Current_kd, 1);
-	SetOutputLimits(&Current_PID, -1500, 1500);
+	SetOutputLimits(&Current_PID, -MAX_VOLTAGE, MAX_VOLTAGE);
 	SetControllerDirection(&Current_PID, DIRECT);
 	SetMode(&Current_PID,  AUTOMATIC);
 	Initialize(&Current_PID);
@@ -334,7 +351,7 @@ void BLDC_main(void){
 
 	SetSampleTime(&Current_PID_offset, PID_TIMING); //100s = 10kHz
 	SetTunings(&Current_PID_offset, storage->Current_offset_kp, storage->Current_offset_ki, storage->Current_offset_kd, 1);
-	SetOutputLimits(&Current_PID_offset, -1500, 1500);
+	SetOutputLimits(&Current_PID_offset, -MAX_VOLTAGE, MAX_VOLTAGE);
 	SetControllerDirection(&Current_PID_offset, DIRECT);
 	SetMode(&Current_PID_offset,  AUTOMATIC);
 	Initialize(&Current_PID_offset);
@@ -524,8 +541,10 @@ void run(){
 
 	//-----------------set PWM--------------------- 3.12us
 	float V_d = 0;//Current_PID_offset.Output;
-	float V_q = 200; //Current_PID.Output;
-	if(V_d == 0 && V_q == 0) V_q = 1; //silly hot fix to not make atan to go wank
+	float V_q = 0; //Current_PID.Output;
+	V_q = V_q*1500/VBAT;
+	V_q = V_q*1500/VBAT;
+	if(V_d == 0 && V_q == 0) V_q = 1; //silly hot fix to not make atan go wank
 	float theta = atan2_approximation2(V_q, V_d)*180.0f/3.14159264f;
 	uint32_t mag = sqrtI((uint32_t)(V_q*V_q+V_d*V_d));
 	mag *= 0.7;
@@ -561,10 +580,12 @@ void run(){
 			}
 	//--------------send can message------------------ 1us
 	//time keepers
-	timing_CAN_feedback++;
+
 	running_LED_timing++;
 
-	if(timing_CAN_feedback >= LOOP_FREQ_KHZ*5){ //every 5ms
+#ifdef SEND_CAN_DATA
+	timing_CAN_feedback++;
+	if(timing_CAN_feedback >= LOOP_FREQ_KHZ*1){ //every 5ms
 		timing_CAN_feedback = 0;
 		Feedback.Status_warning = warning;
 		Feedback.Status_faults = error;
@@ -590,7 +611,25 @@ void run(){
 		//will print same info as on CAN-BUS
 
 	}
+#endif
 
+#ifdef CURRENT_PID_CHECK_DEBUG
+
+	//current_can_data[0 + current_can_data_index] = q;
+	//current_can_data[8 + current_can_data_index] = d;
+	uint8_t test_can[64];
+	// Populate the array with values from 1 to 64
+	for (int i = 0; i < 64; i++) {
+		test_can[i] = i + 1;
+	}
+	if(current_can_data_index == 7){
+		current_can_data_index = 0;
+		FDCAN_sendData(&hfdcan1, 0x69, (uint8_t*)&current_can_data);
+//		FDCAN_sendData(&hfdcan1, 0x69, (uint8_t*)&test_can);
+	}
+	else current_can_data_index++;
+
+#endif
 	//----------------set status LEDs---------------------
 //	if(error)HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 1);
 //	else HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 0);
