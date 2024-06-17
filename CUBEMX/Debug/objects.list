@@ -4,6 +4,7 @@
 "./Application/Calibration.o"
 "./Application/Encoders_SPI.o"
 "./Application/Flash.o"
+"./Application/IIR.o"
 "./Application/PID.o"
 "./Application/Print_server.o"
 "./Application/current_ADC.o"

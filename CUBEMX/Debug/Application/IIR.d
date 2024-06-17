@@ -1,4 +1,4 @@
-Application/current_ADC.o: ../Application/current_ADC.c \
+Application/IIR.o: ../Application/IIR.c ../Application/IIR.h \
  ../Core/Inc/main.h \
  C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal.h \
  ../Core/Inc/stm32g4xx_hal_conf.h \
@@ -38,10 +38,8 @@ Application/current_ADC.o: ../Application/current_ADC.c \
  C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_tim.h \
  C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_tim_ex.h \
  C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart.h \
- C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart_ex.h \
- ../Application/current_ADC.h ../Core/Inc/adc.h ../Core/Inc/main.h \
- ../Core/Inc/dma.h ../Core/Inc/dac.h ../Application/CORDIC_math.h \
- ../Application/IIR.h
+ C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart_ex.h
+../Application/IIR.h:
 ../Core/Inc/main.h:
 C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal.h:
 ../Core/Inc/stm32g4xx_hal_conf.h:
@@ -82,10 +80,3 @@ C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HA
 C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_tim_ex.h:
 C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart.h:
 C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart_ex.h:
-../Application/current_ADC.h:
-../Core/Inc/adc.h:
-../Core/Inc/main.h:
-../Core/Inc/dma.h:
-../Core/Inc/dac.h:
-../Application/CORDIC_math.h:
-../Application/IIR.h:

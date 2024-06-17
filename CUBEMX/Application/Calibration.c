@@ -36,47 +36,47 @@ float pi = 3.14159265f;
 
 uint32_t motor_lut[LUT_SIZE];
 
-#define MAX_IIR 16
-typedef struct IIR{
-	uint8_t size;
-	float Coef_a[MAX_IIR];
-	float Coef_b[MAX_IIR];
-
-	float last_x[MAX_IIR];
-	float last_y[MAX_IIR];
-}IIR_t;
-
-float IIR(IIR_t *handler, float in){
-
-	//----------SHIFT LAST VALUES
-	for(int i = handler->size; i > 0; i--)handler->last_y[i] = handler->last_y[i-1]; //delay input
-	for(int i = handler->size; i > 0; i--)handler->last_x[i] = handler->last_x[i-1]; //delay output
-	handler->last_x[0] = in;
-
-	//----------CALCULATE NEXT OUTPUT
-	float y = 0;
-	for(int i = 0; i <= handler->size; i++)y +=  handler->Coef_b[i]*handler->last_x[i];
-	for(int i = 1; i <= handler->size; i++)y -=  handler->Coef_a[i]*handler->last_y[i];
-	handler->last_y[0] = y;
-
-	//----------RETURN OUTPUT
-	return y;
-}
-IIR_t LPF1 = {
-		.size = 3,
-		.Coef_a = {
-			1.0f,
-			-1.99f,
-			0.99f
-		},
-		.Coef_b = {
-			0.0015f,
-			0.0029f,
-			0.0015f
-		},
-		.last_x = {0},
-		.last_y = {0}
-};
+//#define MAX_IIR 16
+//typedef struct IIR{
+//	uint8_t size;
+//	float Coef_a[MAX_IIR];
+//	float Coef_b[MAX_IIR];
+//
+//	float last_x[MAX_IIR];
+//	float last_y[MAX_IIR];
+//}IIR_t;
+//
+//float IIR(IIR_t *handler, float in){
+//
+//	//----------SHIFT LAST VALUES
+//	for(int i = handler->size; i > 0; i--)handler->last_y[i] = handler->last_y[i-1]; //delay input
+//	for(int i = handler->size; i > 0; i--)handler->last_x[i] = handler->last_x[i-1]; //delay output
+//	handler->last_x[0] = in;
+//
+//	//----------CALCULATE NEXT OUTPUT
+//	float y = 0;
+//	for(int i = 0; i <= handler->size; i++)y +=  handler->Coef_b[i]*handler->last_x[i];
+//	for(int i = 1; i <= handler->size; i++)y -=  handler->Coef_a[i]*handler->last_y[i];
+//	handler->last_y[0] = y;
+//
+//	//----------RETURN OUTPUT
+//	return y;
+//}
+//IIR_t LPF1 = {
+//		.size = 3,
+//		.Coef_a = {
+//			1.0f,
+//			-1.99f,
+//			0.99f
+//		},
+//		.Coef_b = {
+//			0.0015f,
+//			0.0029f,
+//			0.0015f
+//		},
+//		.last_x = {0},
+//		.last_y = {0}
+//};
 
 void order_phases(Encoders *ps, Current *cs){ //, GPIOStruct *gpio, ControllerStruct *controller, PreferenceWriter *prefs
 

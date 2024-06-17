@@ -77,12 +77,12 @@
 
 //-----------------------------------
 //      SETUP
-#define VBAT 12           //volt
-#define MAX_VOLTAGE 5.2       //volt
-#define MAX_Current 1       //amp
-#define MAX_VELOCITY 1000   //RPM
-#define MIN_POSITION 0      //degrees
-#define MAX_POSITION 360    //degrees
+#define VBAT 22.0f           //volt
+#define MAX_VOLTAGE 10.0f       //volt
+#define MAX_Current 5.0f       //amp
+#define MAX_VELOCITY 120.0f   //RPM
+#define MIN_POSITION 0.0f      //degrees
+#define MAX_POSITION 360.0f    //degrees
 //-----------------------------
 
 #define LOOP_FREQ_KHZ 10
@@ -112,6 +112,9 @@ int16_t angle = 0;
 float error_pos = 0;
 float aa_test1 = 0.0f;
 int32_t aa_test2;
+
+uint32_t temp_time_voltage_switching = 0;
+uint8_t voltage_switching_val = 3;
 
 //debug
 
@@ -179,11 +182,12 @@ void Current_IRQ(Current* ptr){
 	#ifdef RUNNING_LED_DEBUG2
 	HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
 	#endif
-
+	//ptr->Current_M1 = 30000;
 
     if(ptr != NULL)memcpy(&IRQ_Current, ptr, sizeof(Current));
     else return;
     Current_Callback_flag = 1;
+
 }
 void Voltage_Temp_IRQ(Voltage_Temp* ptr){
 	memcpy(&IRQ_Voltage_Temp, ptr, sizeof(Voltage_Temp));
@@ -328,28 +332,28 @@ void BLDC_main(void){
 
 	HAL_Delay(100);
 	//----------------PID---------
-	SetSampleTime(&Current_PID, PID_TIMING); //40us = 25kHz
+	SetSampleTime(&Current_PID, PID_TIMING);
 	SetTunings(&Current_PID, storage->Current_kp, storage->Current_ki, storage->Current_kd, 1);
 	SetOutputLimits(&Current_PID, -MAX_VOLTAGE, MAX_VOLTAGE);
 	SetControllerDirection(&Current_PID, DIRECT);
 	SetMode(&Current_PID,  AUTOMATIC);
 	Initialize(&Current_PID);
 
-	SetSampleTime(&Velocity_PID, PID_TIMING); //100s = 10kHz
+	SetSampleTime(&Velocity_PID, PID_TIMING);
 	SetTunings(&Velocity_PID, storage->Velocity_kp, storage->Velocity_ki, storage->Velocity_kd, 1);
-	SetOutputLimits(&Velocity_PID, (storage->Current_limit*-1.0f), (storage->Current_limit));
+	SetOutputLimits(&Velocity_PID, -MAX_Current, MAX_Current);
 	SetControllerDirection(&Velocity_PID, DIRECT);
 	SetMode(&Velocity_PID,  AUTOMATIC);
 	Initialize(&Velocity_PID);
 
-	SetSampleTime(&Angle_PID, PID_TIMING); //100s = 10kHz
+	SetSampleTime(&Angle_PID, PID_TIMING);
 	SetTunings(&Angle_PID, storage->Angle_kp, storage->Angle_ki, storage->Angle_kd, 1);
-	SetOutputLimits(&Angle_PID, (storage->Velocity_limit*-1.0f), (storage->Velocity_limit));
+	SetOutputLimits(&Angle_PID, -MAX_VELOCITY, MAX_VELOCITY);
 	SetControllerDirection(&Angle_PID, DIRECT);
 	SetMode(&Angle_PID,  AUTOMATIC);
 	Initialize(&Angle_PID);
 
-	SetSampleTime(&Current_PID_offset, PID_TIMING); //100s = 10kHz
+	SetSampleTime(&Current_PID_offset, PID_TIMING);
 	SetTunings(&Current_PID_offset, storage->Current_offset_kp, storage->Current_offset_ki, storage->Current_offset_kd, 1);
 	SetOutputLimits(&Current_PID_offset, -MAX_VOLTAGE, MAX_VOLTAGE);
 	SetControllerDirection(&Current_PID_offset, DIRECT);
@@ -500,6 +504,9 @@ void run(){
 	//dq0((float)angle*3.14159264f/180.0f, ((float)IRQ_Current_BUFF.Current_M3/1000.0f), ((float)IRQ_Current_BUFF.Current_M2/1000.0f), ((float)IRQ_Current_BUFF.Current_M1/1000.0f), &d, &q);
 	dq0((float)angle*3.14159264f/180.0f, ((float)IRQ_Current_BUFF.Current_M2/1000.0f), ((float)IRQ_Current_BUFF.Current_M3/1000.0f), ((float)IRQ_Current_BUFF.Current_M1/1000.0f), &d, &q);
 
+	q = -q;
+	d = -d;
+
 	float q_lpf = Update_FIR_filter(q);
 	float d_lpf = Update_FIR_filter2(d);
 
@@ -534,21 +541,44 @@ void run(){
 	#endif
 	Compute(&Current_PID);
 
-//	Current_PID_offset.Setpoint = 0;
+	Current_PID_offset.Setpoint = 0;
 	Compute(&Current_PID_offset);
 
 
 
 	//-----------------set PWM--------------------- 3.12us
-	float V_d = 0;//Current_PID_offset.Output;
-	float V_q = 0; //Current_PID.Output;
-	V_q = V_q*1500/VBAT;
-	V_q = V_q*1500/VBAT;
+	float V_d = Current_PID_offset.Output;
+	float V_q = Current_PID.Output; //voltage_switching_val; //Current_PID.Output; //
+
+	temp_time_voltage_switching++;
+	if(temp_time_voltage_switching > 10*1000){
+		if(voltage_switching_val == 1)voltage_switching_val = 2;
+		else if(voltage_switching_val == 2)voltage_switching_val = 3;
+		else if(voltage_switching_val == 3)voltage_switching_val = 4;
+		else if(voltage_switching_val == 4)voltage_switching_val = 5;
+		else if(voltage_switching_val == 5)voltage_switching_val = 6;
+		else voltage_switching_val = 1;
+		temp_time_voltage_switching = 0;
+	}
+
+
+	V_q = (V_q*1500.0f)/VBAT;
+	V_d = (V_d*1500.0f)/VBAT;
+
+	//V_q = 50;
 	if(V_d == 0 && V_q == 0) V_q = 1; //silly hot fix to not make atan go wank
-	float theta = atan2_approximation2(V_q, V_d)*180.0f/3.14159264f;
-	uint32_t mag = sqrtI((uint32_t)(V_q*V_q+V_d*V_d));
-	mag *= 0.7;
-	if (mag > 1499)mag = 1499;
+	float theta = (atan2_approximation2(V_q, V_d)*180.0f/3.14159264f); // + 45
+	//uint32_t mag = sqrtI((uint32_t)(V_q*V_q+V_d*V_d));
+	//mag *= 0.7;
+	//if (mag > 1499)mag = 1499;
+
+	uint32_t  mag = V_q;
+
+	//-----------------
+//	V_q = (V_q*1500.0f)/VBAT;
+//	//V_d = (V_d*1500.0f)/VBAT;
+//	mag = V_q;
+//	theta = Current_PID_offset.Output;
 
 	//----------------error check---------------
 	uint32_t warning = 0;
@@ -615,13 +645,13 @@ void run(){
 
 #ifdef CURRENT_PID_CHECK_DEBUG
 
-	//current_can_data[0 + current_can_data_index] = q;
-	//current_can_data[8 + current_can_data_index] = d;
-	uint8_t test_can[64];
-	// Populate the array with values from 1 to 64
-	for (int i = 0; i < 64; i++) {
-		test_can[i] = i + 1;
-	}
+	current_can_data[0 + current_can_data_index] = q;
+	current_can_data[8 + current_can_data_index] = d;
+//	uint8_t test_can[64];
+//	// Populate the array with values from 1 to 64
+//	for (int i = 0; i < 64; i++) {
+//		test_can[i] = i + 1;
+//	}
 	if(current_can_data_index == 7){
 		current_can_data_index = 0;
 		FDCAN_sendData(&hfdcan1, 0x69, (uint8_t*)&current_can_data);
@@ -645,7 +675,7 @@ void run(){
 
 	//-----------------update dac---------------------------
 	#ifdef DAC_DEBUG
-	dac_value(q/10 +1500);
+	dac_value(q_lpf/10 +1500);
 	#endif
 }
 

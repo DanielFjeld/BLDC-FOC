@@ -15,6 +15,62 @@
 
 #include "CORDIC_math.h"
 
+#include "IIR.h"
+
+//1000hz butterworth IIR filter
+#define a1 1
+#define a2 -1.794090467765525609422638808609917759895
+#define a3 0.827108702257972283611309194384375587106
+#define gain 0.008254558623111725793042303678248572396
+
+IIR_t LPF_CURRENT_1 = {
+		.size = 3,
+		.Coef_a = {
+			a1,
+			a2,
+			a3
+		},
+		.Coef_b = {
+			1.0f*gain,
+			2.0f*gain,
+			1.0f*gain
+		},
+		.last_x = {0},
+		.last_y = {0}
+};
+
+IIR_t LPF_CURRENT_2 = {
+		.size = 3,
+		.Coef_a = {
+			a1,
+			a2,
+			a3
+		},
+		.Coef_b = {
+			1.0f*gain,
+			2.0f*gain,
+			1.0f*gain
+		},
+		.last_x = {0},
+		.last_y = {0}
+};
+
+IIR_t LPF_CURRENT_3 = {
+		.size = 3,
+		.Coef_a = {
+			a1,
+			a2,
+			a3
+		},
+		.Coef_b = {
+			1.0f*gain,
+			2.0f*gain,
+			1.0f*gain
+		},
+		.last_x = {0},
+		.last_y = {0}
+};
+
 //ADC setup
 #define ADC_RES 4095 //times two
 #define number_of_calibration_points 1000
@@ -96,6 +152,12 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
 			data.Current_M1 = -(int32_t)(((((int32_t)adc_result_DMA[2]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[0])*50;
 			data.Current_M2 = -(int32_t)(((((int32_t)adc_result_DMA[1]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[1])*50;
 			data.Current_M3 = -(int32_t)(((((int32_t)adc_result_DMA[0]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[2])*50;
+
+			data.Current_M1 = (int32_t)(IIR(&LPF_CURRENT_1, (float)((float)data.Current_M1/1000.0f))*1000);
+			data.Current_M2 = (int32_t)(IIR(&LPF_CURRENT_2, (float)((float)data.Current_M2/1000.0f))*1000);
+			data.Current_M3 = (int32_t)(IIR(&LPF_CURRENT_3, (float)((float)data.Current_M3/1000.0f))*1000);
+
+
 			Curent_IRQ_callback(&data);
 		}
 	}
@@ -113,15 +175,14 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc){
 		data.Current_M1 = -(int32_t)(((((int32_t)adc_result_DMA[6]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[0])*50;
 		data.Current_M2 = -(int32_t)(((((int32_t)adc_result_DMA[5]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[1])*50;
 		data.Current_M3 = -(int32_t)(((((int32_t)adc_result_DMA[4]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[2])*50;
+
+		//data.Current_M2 = data.Current_M1;
+		data.Current_M1 = (int32_t)(IIR(&LPF_CURRENT_1, (float)((float)data.Current_M1/1000.0f))*1000);
+		data.Current_M2 = (int32_t)(IIR(&LPF_CURRENT_2, (float)((float)data.Current_M2/1000.0f))*1000);
+		data.Current_M3 = (int32_t)(IIR(&LPF_CURRENT_3, (float)((float)data.Current_M3/1000.0f))*1000);
+
 		Curent_IRQ_callback(&data);
 	}
-//	if (hadc == &hadc2){
-//		VT_data.Temp_NTC1 = 0; //(VT_adc_result_DMA[4]/number_of_VT_oversample*VDDA)/ADC_RES * ;
-//		VT_data.Temp_NTC2 = (VT_adc_result_DMA[5]/number_of_VT_oversample*VDDA)/ADC_RES;
-//		VT_data.V_Bat = (VT_adc_result_DMA[6]/number_of_VT_oversample*VDDA*34)/ADC_RES;
-//		VT_data.V_aux = (VT_adc_result_DMA[7]/number_of_VT_oversample*VDDA*57)/ADC_RES/10;
-//		VT_IRQ_callback(&VT_data);
-//	}
 }
 
 void dq0(float theta, float a, float b, float c, float *d, float *q){

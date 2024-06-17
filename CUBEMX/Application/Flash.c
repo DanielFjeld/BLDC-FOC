@@ -28,16 +28,16 @@ Flash RAM = {
 		.Angle_ki = 0.0f,
 		.Angle_kd = 0.0f,
 
-		.Velocity_kp = 0.18f, //0.18,// 0.1f, //0.2
-		.Velocity_ki = 120.0,//4.0f, //0.01
+		.Velocity_kp = 0.05f, //0.18,// 0.1f, //0.2
+		.Velocity_ki = 60.0,//4.0f, //0.01
 		.Velocity_kd = 0.0,//0.0f, //0.00001
 
-		.Current_kp = 20.0f,//0.02
-		.Current_ki = 100000.0f,//20.0f,
+		.Current_kp = 0.2f,//0.02
+		.Current_ki = 150.0f,//20.0f,
 		.Current_kd = 0.0f,
 
-		.Current_offset_kp = 20.0f,
-		.Current_offset_ki = 100000.0f,
+		.Current_offset_kp = 0.2f,
+		.Current_offset_ki = 150.0f,
 		.Current_offset_kd = 0.0f,
 
 		.Velocity_limit = 4000.0f, //rpm
