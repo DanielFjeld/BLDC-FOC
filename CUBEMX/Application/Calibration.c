@@ -19,7 +19,7 @@
 #include "print_server.h"
 #include "math.h"
 
-#define CAL_DUTY 200
+#define CAL_DUTY 100
 
 //uint32_t find_closest(float arr[], int length, float target);
 
@@ -94,7 +94,7 @@ void order_phases(Encoders *ps, Current *cs){ //, GPIOStruct *gpio, ControllerSt
 
     ///Set voltage angle to zero, wait for rotor position to settle
     inverter((int16_t)theta_ref, CAL_DUTY, PHASE_ORDER);
-    HAL_Delay(1000);
+    HAL_Delay(200);
     //float theta_start = ps->GetMechPositionFixed();                                  //get initial rotor position
     float theta_start;
 

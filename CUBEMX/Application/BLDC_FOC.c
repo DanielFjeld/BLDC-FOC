@@ -77,10 +77,10 @@
 
 //-----------------------------------
 //      SETUP
-#define VBAT 22.0f           //volt
-#define MAX_VOLTAGE 10.0f       //volt
-#define MAX_Current 5.0f       //amp
-#define MAX_VELOCITY 120.0f   //RPM
+#define VBAT 36.0f           //volt
+#define MAX_VOLTAGE 22.0f       //volt
+#define MAX_Current 6.0f       //amp
+#define MAX_VELOCITY 1000.0f   //RPM
 #define MIN_POSITION 0.0f      //degrees
 #define MAX_POSITION 360.0f    //degrees
 //-----------------------------
@@ -103,10 +103,12 @@ float current_can_data[16] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 uint8_t current_can_data_index = 0;
 
 
-//#define SEND_CAN_DATA
+#define SEND_CAN_DATA
 
 
 #define DAC_DEBUG
+
+uint32_t output_soft_start = 10000;
 
 int16_t angle = 0;
 float error_pos = 0;
@@ -114,7 +116,7 @@ float aa_test1 = 0.0f;
 int32_t aa_test2;
 
 uint32_t temp_time_voltage_switching = 0;
-uint8_t voltage_switching_val = 3;
+int32_t voltage_switching_val = 3;
 
 //debug
 
@@ -513,8 +515,8 @@ void run(){
 	//------------------calculate PID----------------------- 6.52us
 	Angle_PID.Input = ((float)IRQ_Encoders_BUFF.Encoder1_pos)/1000.0f + position_overflow*360.0f + storage->Encoder1_offset;
 	Velocity_PID.Input = IRQ_Encoders_BUFF.Velocity;
-	Current_PID.Input = q_lpf;
-	Current_PID_offset.Input = d_lpf;
+	Current_PID.Input = q;
+	Current_PID_offset.Input = d;
 
 	timing_Angle++;
 	if(timing_Angle > 50000){
@@ -522,12 +524,21 @@ void run(){
 		timing_Angle = 0;
 	}
 
-//	Angle_PID.Setpoint = 0;
+
+
+	temp_time_voltage_switching++;
+	if(temp_time_voltage_switching >= 10*5000){
+		if(voltage_switching_val == 360*12.5f)voltage_switching_val = 0;
+		else voltage_switching_val = 360*12.5f;
+		temp_time_voltage_switching = 0;
+	}
+
+	Angle_PID.Setpoint = voltage_switching_val;
 //	Angle_PID./Setpoint = (float)IRQ_STATUS_BUFF.setpoint;
 	Compute(&Angle_PID);
 
-	Velocity_PID.Setpoint = 120.0;
-//	Velocity_PID.Setpoint = Angle_PID.Output;
+//	Velocity_PID.Setpoint = -10.0;
+	Velocity_PID.Setpoint = Angle_PID.Output;
 	Compute(&Velocity_PID);
 
 	#ifdef ZERO_GRAVITY
@@ -550,17 +561,6 @@ void run(){
 	float V_d = Current_PID_offset.Output;
 	float V_q = Current_PID.Output; //voltage_switching_val; //Current_PID.Output; //
 
-	temp_time_voltage_switching++;
-	if(temp_time_voltage_switching > 10*1000){
-		if(voltage_switching_val == 1)voltage_switching_val = 2;
-		else if(voltage_switching_val == 2)voltage_switching_val = 3;
-		else if(voltage_switching_val == 3)voltage_switching_val = 4;
-		else if(voltage_switching_val == 4)voltage_switching_val = 5;
-		else if(voltage_switching_val == 5)voltage_switching_val = 6;
-		else voltage_switching_val = 1;
-		temp_time_voltage_switching = 0;
-	}
-
 
 	V_q = (V_q*1500.0f)/VBAT;
 	V_d = (V_d*1500.0f)/VBAT;
@@ -568,11 +568,11 @@ void run(){
 	//V_q = 50;
 	if(V_d == 0 && V_q == 0) V_q = 1; //silly hot fix to not make atan go wank
 	float theta = (atan2_approximation2(V_q, V_d)*180.0f/3.14159264f); // + 45
-	//uint32_t mag = sqrtI((uint32_t)(V_q*V_q+V_d*V_d));
-	//mag *= 0.7;
-	//if (mag > 1499)mag = 1499;
+	uint32_t mag = sqrtI((uint32_t)(V_q*V_q+V_d*V_d));
+	mag *= 0.7;
+	if (mag > 1499)mag = 1499;
 
-	uint32_t  mag = V_q;
+	//uint32_t  mag = abs(V_q);
 
 	//-----------------
 //	V_q = (V_q*1500.0f)/VBAT;
@@ -603,7 +603,18 @@ void run(){
 	}
 	else if (Status == BLDC_STOPPED_WITH_BREAK){
 //			shutoff();
-		inverter(angle + (int32_t)theta + 360*2, mag, PHASE_ORDER);
+		if(output_soft_start == 0)
+			inverter(angle + (int32_t)theta + 360*2, mag, PHASE_ORDER);
+		else{
+
+			output_soft_start--;
+			shutoff();
+			Velocity_PID.outputSum = 0;
+			Current_PID.outputSum = 0;
+			Current_PID_offset.outputSum = 0;
+			Angle_PID.outputSum = 0;
+		}
+
 		//inverter(angle + (int32_t)theta + 360*2, mag, 0);
 		}
 	else if (Status == BLDC_RUNNING){
@@ -625,17 +636,21 @@ void run(){
 		Feedback.Current_Q = q_lpf;
 		Feedback.Current_D = d_lpf;
 
-		Feedback.Voltage_AUX = IRQ_Voltage_Temp_BUFF.V_aux;
-		Feedback.Voltage_BAT = IRQ_Voltage_Temp_BUFF.V_Bat;
+		Feedback.Voltage_magnitude = mag;
+		Feedback.Voltage_theta = theta;
 
-		Feedback.Temp_ENCODER1 = IRQ_Encoders_BUFF.Encoder1_temp_x10/10;
-		Feedback.Temp_ENCODER2 = IRQ_Encoders_BUFF.Encoder2_temp_x10/10;
+		//Feedback.Temp_ENCODER1 = IRQ_Encoders_BUFF.Encoder1_temp_x10/10;
+		//Feedback.Temp_ENCODER2 = IRQ_Encoders_BUFF.Encoder2_temp_x10/10;
 
 		Feedback.Position_Encoder1_pos = IRQ_Encoders_BUFF.Encoder1_pos/1000.0f;
 		Feedback.Position_Encoder2_pos = IRQ_Encoders_BUFF.Encoder2_pos/1000.0f;
 		Feedback.Position_Calculated_pos = Angle_PID.Input;
 		Feedback.Position_Velocity = IRQ_Encoders_BUFF.Velocity;
-		FDCAN_sendData(&hfdcan1, (CAN_FEEDBACK_ID << 8) 	| (CAN_DEVICE_ID << 4) | (CAN_BLDC_ID << 0), (uint8_t*)&Feedback);
+
+		Feedback.Current_setpoint  = Current_PID.Setpoint;
+		Feedback.Velocity_setpoint = Velocity_PID.Setpoint;
+		Feedback.Position_setpoint = Angle_PID.Setpoint;
+		FDCAN_sendData(&hfdcan1, 0x42, (uint8_t*)&Feedback);
 
 		//-----------------PRINTF DEBUGGING-------------------
 		//will print same info as on CAN-BUS

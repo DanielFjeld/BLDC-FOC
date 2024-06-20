@@ -43,13 +43,20 @@
 		float Current_Q;
 		float Current_D;
 
-		int16_t Temp_ENCODER1;
-		int16_t Temp_ENCODER2;
+		//int16_t Temp_ENCODER1;
+		//int16_t Temp_ENCODER2;
 
-		float Voltage_BAT;
-		float Voltage_AUX;
 
-		uint8_t recerve[12];
+
+		float Voltage_magnitude;
+		float Voltage_theta;
+
+		float Current_setpoint;
+		float Velocity_setpoint;
+		float Position_setpoint;
+
+		float reserved;
+
 	}CAN_Feedback;
 	typedef struct CAN_Status{
 		uint32_t status;

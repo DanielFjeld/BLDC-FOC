@@ -177,9 +177,9 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc){
 		data.Current_M3 = -(int32_t)(((((int32_t)adc_result_DMA[4]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[2])*50;
 
 		//data.Current_M2 = data.Current_M1;
-		data.Current_M1 = (int32_t)(IIR(&LPF_CURRENT_1, (float)((float)data.Current_M1/1000.0f))*1000);
-		data.Current_M2 = (int32_t)(IIR(&LPF_CURRENT_2, (float)((float)data.Current_M2/1000.0f))*1000);
-		data.Current_M3 = (int32_t)(IIR(&LPF_CURRENT_3, (float)((float)data.Current_M3/1000.0f))*1000);
+		//data.Current_M1 = (int32_t)(IIR(&LPF_CURRENT_1, (float)((float)data.Current_M1/1000.0f))*1000);
+		//data.Current_M2 = (int32_t)(IIR(&LPF_CURRENT_2, (float)((float)data.Current_M2/1000.0f))*1000);
+		//data.Current_M3 = (int32_t)(IIR(&LPF_CURRENT_3, (float)((float)data.Current_M3/1000.0f))*1000);
 
 		Curent_IRQ_callback(&data);
 	}
