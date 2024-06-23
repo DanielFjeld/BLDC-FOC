@@ -79,7 +79,7 @@
 //      SETUP
 #define VBAT 36.0f           //volt
 #define MAX_VOLTAGE 22.0f       //volt
-#define MAX_Current 6.0f       //amp
+#define MAX_CURRENT 6.0f       //amp
 #define MAX_VELOCITY 1000.0f   //RPM
 #define MIN_POSITION 0.0f      //degrees
 #define MAX_POSITION 360.0f    //degrees
@@ -124,6 +124,10 @@ int32_t voltage_switching_val = 3;
 int32_t test_val = 0;
 
 //#define ZERO_GRAVITY
+
+//----------------Position Ramp-----------
+float setpoint_ramp = 1500; //rpm ramp
+float position_setpoint = 0;
 
 //-------------------MISC-----------------
 uint8_t Current_Callback_flag = 0;
@@ -343,7 +347,7 @@ void BLDC_main(void){
 
 	SetSampleTime(&Velocity_PID, PID_TIMING);
 	SetTunings(&Velocity_PID, storage->Velocity_kp, storage->Velocity_ki, storage->Velocity_kd, 1);
-	SetOutputLimits(&Velocity_PID, -MAX_Current, MAX_Current);
+	SetOutputLimits(&Velocity_PID, -MAX_CURRENT, MAX_CURRENT);
 	SetControllerDirection(&Velocity_PID, DIRECT);
 	SetMode(&Velocity_PID,  AUTOMATIC);
 	Initialize(&Velocity_PID);
@@ -489,7 +493,7 @@ void run(){
 	else if (last_pos_enc < 90000 && IRQ_Encoders_BUFF.Encoder1_pos > 270000)position_overflow--;
 	last_pos_enc = IRQ_Encoders_BUFF.Encoder1_pos;
 
-	//------------------calculate PID----------------------- 6.52us
+	//------------------calculate Current Q and D-----------------------
 	float d;
 	float q;
 	int16_t index_error = (int16_t)(IRQ_Encoders_BUFF.Encoder1_pos/1000)%360;// - electrical_offset);
@@ -509,23 +513,7 @@ void run(){
 	q = -q;
 	d = -d;
 
-	float q_lpf = Update_FIR_filter(q);
-	float d_lpf = Update_FIR_filter2(d);
-
-	//------------------calculate PID----------------------- 6.52us
-	Angle_PID.Input = ((float)IRQ_Encoders_BUFF.Encoder1_pos)/1000.0f + position_overflow*360.0f + storage->Encoder1_offset;
-	Velocity_PID.Input = IRQ_Encoders_BUFF.Velocity;
-	Current_PID.Input = q;
-	Current_PID_offset.Input = d;
-
-	timing_Angle++;
-	if(timing_Angle > 50000){
-		Angle_PID.Setpoint = Angle_PID.Setpoint + 12.5*360;
-		timing_Angle = 0;
-	}
-
-
-
+	//------------------calculate position setpoint----------------------
 	temp_time_voltage_switching++;
 	if(temp_time_voltage_switching >= 10*5000){
 		if(voltage_switching_val == 360*12.5f)voltage_switching_val = 0;
@@ -533,7 +521,35 @@ void run(){
 		temp_time_voltage_switching = 0;
 	}
 
-	Angle_PID.Setpoint = voltage_switching_val;
+	position_setpoint = voltage_switching_val;
+
+	//------------------calculate position setpoint----------------------
+	float ramp_angle = setpoint_ramp;
+	ramp_angle /= 60; //rounds per seconds
+	ramp_angle /= 360;   //degrees per second
+	ramp_angle /= (LOOP_FREQ_KHZ*1000); //degrees per update
+
+	float position_error = position_setpoint - Angle_PID.Setpoint;
+	if(position_error <= ramp_angle && position_error >= ramp_angle){
+		position_setpoint = Angle_PID.Setpoint;
+	}
+	else if(position_error > 0){
+		Angle_PID.Setpoint -= ramp_angle;
+	}
+	else{
+		Angle_PID.Setpoint += ramp_angle;
+	}
+
+
+
+
+	//------------------calculate PID----------------------- 6.52us
+	Angle_PID.Input = ((float)IRQ_Encoders_BUFF.Encoder1_pos)/1000.0f + position_overflow*360.0f + storage->Encoder1_offset;
+	Velocity_PID.Input = IRQ_Encoders_BUFF.Velocity;
+	Current_PID.Input = q;
+	Current_PID_offset.Input = d;
+
+
 //	Angle_PID./Setpoint = (float)IRQ_STATUS_BUFF.setpoint;
 	Compute(&Angle_PID);
 
@@ -582,8 +598,8 @@ void run(){
 
 	//----------------error check---------------
 	uint32_t warning = 0;
-	check_value(&LIMIT_Current, (float)q_lpf, &warning, &error, 0);
-	check_value(&LIMIT_Current, (float)d_lpf, &warning, &error, 0);
+	check_value(&LIMIT_Current, (float)q, &warning, &error, 0);
+	check_value(&LIMIT_Current, (float)d, &warning, &error, 0);
 	check_value(&LIMIT_Encoder_1, (float)IRQ_Encoders_BUFF.Encoder1_pos, &warning, &error, 1);
 	check_value(&LIMIT_Encoder_2, (float)IRQ_Encoders_BUFF.Encoder2_pos, &warning, &error, 2);
 	check_value(&LIMIT_Velocity, (float)IRQ_Encoders_BUFF.Velocity, &warning, &error, 3);
@@ -633,8 +649,8 @@ void run(){
 		Feedback.Status_setpoint = IRQ_STATUS_BUFF.setpoint;
 		Feedback.Status_mode = Status;
 
-		Feedback.Current_Q = q_lpf;
-		Feedback.Current_D = d_lpf;
+		Feedback.Current_Q = q;
+		Feedback.Current_D = d;
 
 		Feedback.Voltage_magnitude = mag;
 		Feedback.Voltage_theta = theta;
@@ -690,7 +706,7 @@ void run(){
 
 	//-----------------update dac---------------------------
 	#ifdef DAC_DEBUG
-	dac_value(q_lpf/10 +1500);
+	dac_value(q/10 +1500);
 	#endif
 }
 

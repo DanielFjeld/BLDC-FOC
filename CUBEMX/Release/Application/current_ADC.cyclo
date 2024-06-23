@@ -1,10 +1,7 @@
-../Application/current_ADC.c:53:6:dac_value	1
-../Application/current_ADC.c:64:9:polar_to_rectangular	1
-../Application/current_ADC.c:73:9:add_complex	1
-../Application/current_ADC.c:81:7:calculate_vector_sum	1
-../Application/current_ADC.c:95:6:ADC_CAL	2
-../Application/current_ADC.c:109:6:current_init	1
-../Application/current_ADC.c:121:6:voltage_temperature_init	1
-../Application/current_ADC.c:127:6:HAL_ADC_ConvHalfCpltCallback	7
-../Application/current_ADC.c:147:6:HAL_ADC_ConvCpltCallback	7
-../Application/current_ADC.c:176:6:dq0	1
+../Application/current_ADC.c:110:6:dac_value	1
+../Application/current_ADC.c:115:6:ADC_CAL	2
+../Application/current_ADC.c:129:6:current_init	1
+../Application/current_ADC.c:141:6:voltage_temperature_init	1
+../Application/current_ADC.c:147:6:HAL_ADC_ConvHalfCpltCallback	7
+../Application/current_ADC.c:172:6:HAL_ADC_ConvCpltCallback	6
+../Application/current_ADC.c:188:6:dq0	1
