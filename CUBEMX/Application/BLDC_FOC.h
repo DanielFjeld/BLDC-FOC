@@ -43,11 +43,6 @@
 		float Current_Q;
 		float Current_D;
 
-		//int16_t Temp_ENCODER1;
-		//int16_t Temp_ENCODER2;
-
-
-
 		float Voltage_magnitude;
 		float Voltage_theta;
 
@@ -55,7 +50,7 @@
 		float Velocity_setpoint;
 		float Position_setpoint;
 
-		float reserved;
+		float Position_slope_setpoint;
 
 	}CAN_Feedback;
 	typedef struct CAN_Status{
@@ -92,17 +87,18 @@
 	typedef enum{
 		LIMIT_Q_CURRENT,
 		LIMIT_D_CURRENT,
-		LIMIT_ENCODER_1,
 		LIMIT_ENCODER_2,
+		LIMIT_VELOCITY,
+		LIMIT_ENCODER_CRC,
 	}LIMIT_CHECK_t;
 
-	static char status_sting[5][26] = {
-			"  BLDC STOPPED WITH BREAK\0",
-			"BLDC STOPPED AND SHUTDOWN\0",
-			" BLDC CALIBRATING ENCODER\0",
-			"             BLDC RUNNING\0",
-			"               BLDC ERROR\0"
-	};
+//	static char status_sting[5][26] = {
+//			"  BLDC STOPPED WITH BREAK\0",
+//			"BLDC STOPPED AND SHUTDOWN\0",
+//			" BLDC CALIBRATING ENCODER\0",
+//			"             BLDC RUNNING\0",
+//			"               BLDC ERROR\0"
+//	};
 
 	void BLDC_main(void);
 	void run();

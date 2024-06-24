@@ -8,6 +8,8 @@
 #ifndef ENCODERS_SPI_H_
 #define ENCODERS_SPI_H_
 
+	extern int16_t crc_error_count;
+
 	typedef struct Encoders{
 		uint32_t Encoder1_pos; 	//0 to 360 000
 		uint32_t Encoder2_pos; 	//0 to 360 000

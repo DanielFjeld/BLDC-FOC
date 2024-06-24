@@ -81,6 +81,7 @@ uint32_t aaa_test_pos_delete3 = 0;
 float velocity_calc;
 int16_t crc_error_count = 0;
 
+
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi)
 {
 	if (hspi == &hspi1) {
@@ -96,38 +97,15 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi)
 
 		uint8_t crc = SPI1_rx_buff[4];
 
-		if(crc_error_count > 10){
-			//encoder timeout CRC 1ms
-
-			//TODO: add abort sequence
-		}
 		if(calculated_crc != crc){
 			crc_error_count++;
 			return;
 		}
 		if(crc_error_count > 0)crc_error_count--;
 
-
 		//data_encoders.Calculated_pos = SPI1_rx_buff[0]; //(SPI1_rx_buff[3] << 8) | (SPI1_rx_buff[2]);
-		int32_t temp_Encoder1_pos = (int32_t)(((uint32_t)(SPI1_rx_buff[0] << 6) | (SPI1_rx_buff[1] >> 2)) * 5625) >> 8;
+		data_encoders.Encoder1_pos = (int32_t)(((uint32_t)(SPI1_rx_buff[0] << 6) | (SPI1_rx_buff[1] >> 2)) * 5625) >> 8;
 		data_encoders.Encoder1_pos_raw = (uint32_t)(SPI1_rx_buff[0] << 6) | (SPI1_rx_buff[1] >> 2);
-
-		if(last_pos_dt < 0)last_pos_dt = temp_Encoder1_pos; //startup
-
-		int32_t last_pos_dt_check = temp_Encoder1_pos-last_pos_dt;
-		if(temp_Encoder1_pos > 0){
-			last_pos_dt = temp_Encoder1_pos;}
-		else{
-			uint8_t hei = 0;
-		}
-		if(temp_Encoder1_pos > 360000 || temp_Encoder1_pos < 0){
-			uint8_t hei = 0;
-		}
-
-		data_encoders.Encoder1_pos = last_pos_dt;
-		aaa_test_pos_delete1 = last_pos_dt;
-		aaa_test_pos_delete2 = last_pos_dt;
-		aaa_test_pos_delete3 = last_pos_dt;
 
 		float velocity_temp;
 		if(((int32_t)data_encoders.Encoder1_pos - last_pos) > 180000)velocity_temp = ((int32_t)data_encoders.Encoder1_pos-last_pos - 360000);
