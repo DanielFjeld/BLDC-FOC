@@ -77,13 +77,18 @@
 
 //-----------------------------------
 //      SETUP
-#define VBAT 36.0f           //volt
+#define VBAT 22.0f           //volt
 #define MAX_VOLTAGE 22.0f       //volt
-#define MAX_CURRENT 6.0f       //amp
-#define MAX_VELOCITY 1000.0f   //RPM
+#define MAX_CURRENT 20.0f       //amp
+#define MAX_VELOCITY 1500.0f   //RPM
 #define MIN_POSITION 0.0f      //degrees
 #define MAX_POSITION 360.0f    //degrees
 //-----------------------------
+//----------------Position Ramp-----------
+float setpoint_ramp = 1500; //rpm ramp
+float position_setpoint = 0;
+
+
 
 #define LOOP_FREQ_KHZ 10
 
@@ -125,9 +130,7 @@ int32_t test_val = 0;
 
 //#define ZERO_GRAVITY
 
-//----------------Position Ramp-----------
-float setpoint_ramp = 1500; //rpm ramp
-float position_setpoint = 0;
+
 
 //-------------------MISC-----------------
 uint8_t Current_Callback_flag = 0;
@@ -248,8 +251,8 @@ CAN_LIMITS LIMIT_temp = {
 
 //------------PID LIMITS------------------
 CAN_LIMITS LIMIT_Current = {
-	.max_error = NAN,
-	.min_error = NAN,
+	.max_error = 30,
+	.min_error =-30,
 	.max_warning = NAN,
 	.min_warning = NAN,
 };
@@ -470,6 +473,19 @@ void run(){
 	memcpy(&IRQ_Encoders_BUFF, &IRQ_Encoders, sizeof(Encoders));
 	memcpy(&IRQ_STATUS_BUFF, &IRQ_Status, sizeof(CAN_Status));
 
+#ifndef CAN_CTRL
+	temp_time_voltage_switching++;
+		if(temp_time_voltage_switching >= 10*5000){
+			if(voltage_switching_val == 360*12.5f)voltage_switching_val = 0;
+			else voltage_switching_val = 360*12.5f;
+			temp_time_voltage_switching = 0;
+		}
+
+		position_setpoint = voltage_switching_val;
+
+	//position_setpoint = 0;
+#endif
+
 	//FSM
 	if(Status == BLDC_STOPPED_WITH_BREAK && IRQ_STATUS_BUFF.status == INPUT_CALIBRATE_ENCODER)Status = BLDC_CALIBRATING_ENCODER;
 	else if(Status == BLDC_STOPPED_WITH_BREAK && IRQ_STATUS_BUFF.status == INPUT_RESET_ERRORS)error = 0;
@@ -514,34 +530,23 @@ void run(){
 	d = -d;
 
 	//------------------calculate position setpoint----------------------
-	temp_time_voltage_switching++;
-	if(temp_time_voltage_switching >= 10*5000){
-		if(voltage_switching_val == 360*12.5f)voltage_switching_val = 0;
-		else voltage_switching_val = 360*12.5f;
-		temp_time_voltage_switching = 0;
-	}
-
-	position_setpoint = voltage_switching_val;
-
-	//------------------calculate position setpoint----------------------
 	float ramp_angle = setpoint_ramp;
 	ramp_angle /= 60; //rounds per seconds
-	ramp_angle /= 360;   //degrees per second
+	ramp_angle *= 360;   //degrees per second
 	ramp_angle /= (LOOP_FREQ_KHZ*1000); //degrees per update
 
+	//ramp_angle = 0.1;
+
 	float position_error = position_setpoint - Angle_PID.Setpoint;
-	if(position_error <= ramp_angle && position_error >= ramp_angle){
+	if(abs(position_error) <= ramp_angle){
 		position_setpoint = Angle_PID.Setpoint;
 	}
 	else if(position_error > 0){
-		Angle_PID.Setpoint -= ramp_angle;
-	}
-	else{
 		Angle_PID.Setpoint += ramp_angle;
 	}
-
-
-
+	else{
+		Angle_PID.Setpoint -= ramp_angle;
+	}
 
 	//------------------calculate PID----------------------- 6.52us
 	Angle_PID.Input = ((float)IRQ_Encoders_BUFF.Encoder1_pos)/1000.0f + position_overflow*360.0f + storage->Encoder1_offset;
@@ -600,13 +605,13 @@ void run(){
 	uint32_t warning = 0;
 	check_value(&LIMIT_Current, (float)q, &warning, &error, 0);
 	check_value(&LIMIT_Current, (float)d, &warning, &error, 0);
-	check_value(&LIMIT_Encoder_1, (float)IRQ_Encoders_BUFF.Encoder1_pos, &warning, &error, 1);
-	check_value(&LIMIT_Encoder_2, (float)IRQ_Encoders_BUFF.Encoder2_pos, &warning, &error, 2);
-	check_value(&LIMIT_Velocity, (float)IRQ_Encoders_BUFF.Velocity, &warning, &error, 3);
-	check_value(&LIMIT_V_AUX, (float)IRQ_Voltage_Temp_BUFF.V_aux, &warning, &error, 4);
-	check_value(&LIMIT_V_BAT, (float)IRQ_Voltage_Temp_BUFF.V_Bat, &warning, &error, 5);
-	check_value(&LIMIT_temp, (float)IRQ_Voltage_Temp_BUFF.Temp_NTC1, &warning, &error, 6);
-	check_value(&LIMIT_temp, (float)IRQ_Voltage_Temp_BUFF.Temp_NTC2, &warning, &error, 7);
+//	check_value(&LIMIT_Encoder_1, (float)IRQ_Encoders_BUFF.Encoder1_pos, &warning, &error, 1);
+//	check_value(&LIMIT_Encoder_2, (float)IRQ_Encoders_BUFF.Encoder2_pos, &warning, &error, 2);
+//	check_value(&LIMIT_Velocity, (float)IRQ_Encoders_BUFF.Velocity, &warning, &error, 3);
+//	check_value(&LIMIT_V_AUX, (float)IRQ_Voltage_Temp_BUFF.V_aux, &warning, &error, 4);
+//	check_value(&LIMIT_V_BAT, (float)IRQ_Voltage_Temp_BUFF.V_Bat, &warning, &error, 5);
+//	check_value(&LIMIT_temp, (float)IRQ_Voltage_Temp_BUFF.Temp_NTC1, &warning, &error, 6);
+//	check_value(&LIMIT_temp, (float)IRQ_Voltage_Temp_BUFF.Temp_NTC2, &warning, &error, 7);
 
 	//-----------------set PWM---------------------
 	if(error){
@@ -654,9 +659,6 @@ void run(){
 
 		Feedback.Voltage_magnitude = mag;
 		Feedback.Voltage_theta = theta;
-
-		//Feedback.Temp_ENCODER1 = IRQ_Encoders_BUFF.Encoder1_temp_x10/10;
-		//Feedback.Temp_ENCODER2 = IRQ_Encoders_BUFF.Encoder2_temp_x10/10;
 
 		Feedback.Position_Encoder1_pos = IRQ_Encoders_BUFF.Encoder1_pos/1000.0f;
 		Feedback.Position_Encoder2_pos = IRQ_Encoders_BUFF.Encoder2_pos/1000.0f;
