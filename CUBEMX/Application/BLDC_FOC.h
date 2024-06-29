@@ -61,6 +61,8 @@
 	typedef struct CAN_Status{
 		uint32_t status;
 		float setpoint;
+		float ramp;
+		float reserved;
 	}CAN_Status;
 
 

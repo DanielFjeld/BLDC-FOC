@@ -73,7 +73,7 @@ IIR_t LPF_CURRENT_3 = {
 
 //ADC setup
 #define ADC_RES 4095 //times two
-#define number_of_calibration_points 1000
+#define number_of_calibration_points 100
 
 #define number_of_oversample 16 //times two
 #define number_of_VT_oversample 16 //times two
@@ -105,25 +105,11 @@ Voltage_Temp VT_data;
 #define Vref 3000
 
 uint16_t calibrating = 0;
-volatile uint32_t Voltage_offset_temp[3] = {0};
+volatile int32_t Voltage_offset_temp[3] = {0};
 
 void dac_value(uint16_t V_dac){
 	uint16_t dac_value = ((V_dac*ADC_RES)/VDDA);
 	HAL_DAC_SetValue(&hdac1, DAC1_CHANNEL_1, DAC_ALIGN_12B_R, dac_value);
-}
-
-void ADC_CAL(){
-	VDDA = (int16_t)3000*(*vrefint)/(adc_result_DMA[3]/number_of_oversample);
-	Voltage_offset_temp[0] += (int32_t)((adc_result_DMA[2]/number_of_oversample*VDDA)/4095)*153/100; //*153/100
-	Voltage_offset_temp[1] += (int32_t)((adc_result_DMA[1]/number_of_oversample*VDDA)/4095)*153/100;
-	Voltage_offset_temp[2] += (int32_t)((adc_result_DMA[0]/number_of_oversample*VDDA)/4095)*153/100;
-	calibrating--;
-
-	if(!calibrating){
-		Voltage_offset[0] = Voltage_offset_temp[0]/number_of_calibration_points;
-		Voltage_offset[1] = Voltage_offset_temp[1]/number_of_calibration_points;
-		Voltage_offset[2] = Voltage_offset_temp[2]/number_of_calibration_points;
-	}
 }
 
 void current_init(Current_Callback __IRQ_callback){
@@ -143,19 +129,31 @@ void voltage_temperature_init(VT_Callback __IRQ_callback){
 
 	HAL_ADC_Start_DMA(&hadc2, (uint32_t*)VT_adc_result_DMA, number_of_VT_channels*2);
 }
+void ADC_CAL(){
+	VDDA = (int16_t)3000*(*vrefint)/(adc_result_DMA[3]/number_of_oversample);
+	Voltage_offset_temp[2] += -(int32_t)(((((int32_t)adc_result_DMA[2]/number_of_oversample*VDDA)/ADC_RES)*153/100))*50; //*153/100
+	Voltage_offset_temp[1] += -(int32_t)(((((int32_t)adc_result_DMA[1]/number_of_oversample*VDDA)/ADC_RES)*153/100))*50;
+	Voltage_offset_temp[0] += -(int32_t)(((((int32_t)adc_result_DMA[0]/number_of_oversample*VDDA)/ADC_RES)*153/100))*50;
+	calibrating--;
 
+	if(!calibrating){
+		Voltage_offset[0] = Voltage_offset_temp[0]/number_of_calibration_points;
+		Voltage_offset[1] = Voltage_offset_temp[1]/number_of_calibration_points;
+		Voltage_offset[2] = Voltage_offset_temp[2]/number_of_calibration_points;
+	}
+}
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
 	if (hadc == &hadc1){
 		if(calibrating)ADC_CAL();
 		else {
 			VDDA = (int16_t)3000*(*vrefint)/(adc_result_DMA[3]/number_of_oversample);
-			data.Current_M1 = -(int32_t)(((((int32_t)adc_result_DMA[2]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[0])*50;
-			data.Current_M2 = -(int32_t)(((((int32_t)adc_result_DMA[1]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[1])*50;
-			data.Current_M3 = -(int32_t)(((((int32_t)adc_result_DMA[0]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[2])*50;
+			data.Current_M1 = -(int32_t)(((((int32_t)adc_result_DMA[2]/number_of_oversample*VDDA)/ADC_RES)*153/100))*50-(int32_t)Voltage_offset[2];
+			data.Current_M2 = -(int32_t)(((((int32_t)adc_result_DMA[1]/number_of_oversample*VDDA)/ADC_RES)*153/100))*50-(int32_t)Voltage_offset[1];
+			data.Current_M3 = -(int32_t)(((((int32_t)adc_result_DMA[0]/number_of_oversample*VDDA)/ADC_RES)*153/100))*50-(int32_t)Voltage_offset[0];
 
-			data.Current_M1 = (int32_t)(IIR(&LPF_CURRENT_1, (float)((float)data.Current_M1/1000.0f))*1000);
-			data.Current_M2 = (int32_t)(IIR(&LPF_CURRENT_2, (float)((float)data.Current_M2/1000.0f))*1000);
-			data.Current_M3 = (int32_t)(IIR(&LPF_CURRENT_3, (float)((float)data.Current_M3/1000.0f))*1000);
+//			data.Current_M1 = (int32_t)(IIR(&LPF_CURRENT_1, (float)((float)data.Current_M1/1000.0f))*1000);
+//			data.Current_M2 = (int32_t)(IIR(&LPF_CURRENT_2, (float)((float)data.Current_M2/1000.0f))*1000);
+//			data.Current_M3 = (int32_t)(IIR(&LPF_CURRENT_3, (float)((float)data.Current_M3/1000.0f))*1000);
 
 
 			Curent_IRQ_callback(&data);
@@ -171,17 +169,17 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
 }
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc){
 	if (hadc == &hadc1 && !calibrating){
-		VDDA = (int16_t)3000*(*vrefint)/(adc_result_DMA[7]/number_of_oversample);
-		data.Current_M1 = -(int32_t)(((((int32_t)adc_result_DMA[6]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[0])*50;
-		data.Current_M2 = -(int32_t)(((((int32_t)adc_result_DMA[5]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[1])*50;
-		data.Current_M3 = -(int32_t)(((((int32_t)adc_result_DMA[4]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[2])*50;
+//		VDDA = (int16_t)3000*(*vrefint)/(adc_result_DMA[7]/number_of_oversample);
+//		data.Current_M1 = -(int32_t)(((((int32_t)adc_result_DMA[6]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[0])*50;
+//		data.Current_M2 = -(int32_t)(((((int32_t)adc_result_DMA[5]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[1])*50;
+//		data.Current_M3 = -(int32_t)(((((int32_t)adc_result_DMA[4]/number_of_oversample*VDDA)/ADC_RES)*153/100)-(int32_t)Voltage_offset[2])*50;
 
 		//data.Current_M2 = data.Current_M1;
 		//data.Current_M1 = (int32_t)(IIR(&LPF_CURRENT_1, (float)((float)data.Current_M1/1000.0f))*1000);
 		//data.Current_M2 = (int32_t)(IIR(&LPF_CURRENT_2, (float)((float)data.Current_M2/1000.0f))*1000);
 		//data.Current_M3 = (int32_t)(IIR(&LPF_CURRENT_3, (float)((float)data.Current_M3/1000.0f))*1000);
 
-		Curent_IRQ_callback(&data);
+//		Curent_IRQ_callback(&data);
 	}
 }
 

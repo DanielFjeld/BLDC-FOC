@@ -79,16 +79,17 @@
 //      SETUP
 #define VBAT 22.0f           //volt
 #define MAX_VOLTAGE 22.0f       //volt
-#define MAX_CURRENT 20.0f       //amp
-#define MAX_VELOCITY 1500.0f   //RPM
+#define MAX_CURRENT 10.0f       //amp
+#define MAX_VELOCITY 2000.0f   //RPM
 #define MIN_POSITION 0.0f      //degrees
 #define MAX_POSITION 360.0f    //degrees
 //-----------------------------
 //----------------Position Ramp-----------
-float setpoint_ramp = 1500; //rpm ramp
+float setpoint_ramp = 2000; //rpm ramp
 float position_setpoint = 0;
 
 
+uint32_t step_test = 0;
 
 #define LOOP_FREQ_KHZ 10
 
@@ -373,8 +374,9 @@ void BLDC_main(void){
 
 
 	//setup current
+	HAL_Delay(3000);
 	current_init((void*)&Current_IRQ);
-	HAL_Delay(1000);
+	HAL_Delay(3000);
 	//setup encoder
 	ORBIS_init((void*)&Encoders_IRQ);
 
@@ -382,7 +384,7 @@ void BLDC_main(void){
 	voltage_temperature_init((void*)&Voltage_Temp_IRQ);
 	//setup CAN
 	//-----------------CAN----------------------
-	FDCAN_addCallback(&hfdcan1, (CAN_STATUS_ID << 8) 		| (CAN_DEVICE_ID << 4) | (CAN_BLDC_ID << 0), (void*)&Can_RX_Status_IRQ);
+	FDCAN_addCallback(&hfdcan1, 0x22, (void*)&Can_RX_Status_IRQ);
 //	FDCAN_addCallback(&hfdcan1, (CAN_PID_ID << 8) 	| (CAN_DEVICE_ID << 4) | (CAN_BLDC_ID << 0), (void*)&Can_RX_PID_IRQ);
 
 	FDCAN_Start(&hfdcan1);
@@ -480,9 +482,7 @@ void run(){
 			else voltage_switching_val = 360*12.5f;
 			temp_time_voltage_switching = 0;
 		}
-
 		position_setpoint = voltage_switching_val;
-
 	//position_setpoint = 0;
 #endif
 
@@ -526,8 +526,11 @@ void run(){
 	//dq0((float)angle*3.14159264f/180.0f, ((float)IRQ_Current_BUFF.Current_M3/1000.0f), ((float)IRQ_Current_BUFF.Current_M2/1000.0f), ((float)IRQ_Current_BUFF.Current_M1/1000.0f), &d, &q);
 	dq0((float)angle*3.14159264f/180.0f, ((float)IRQ_Current_BUFF.Current_M2/1000.0f), ((float)IRQ_Current_BUFF.Current_M3/1000.0f), ((float)IRQ_Current_BUFF.Current_M1/1000.0f), &d, &q);
 
-	q = -q;
-	d = -d;
+	//2, 3, 1
+
+
+	//q = -q;
+	//d = -d;
 
 	//------------------calculate position setpoint----------------------
 	float ramp_angle = setpoint_ramp;
@@ -614,9 +617,27 @@ void run(){
 //	check_value(&LIMIT_temp, (float)IRQ_Voltage_Temp_BUFF.Temp_NTC2, &warning, &error, 7);
 
 	//-----------------set PWM---------------------
+	error = 0;
 	if(error){
 		Status = BLDC_ERROR;
-		shutoff();
+		//shutoff();
+		//shutdown();
+	}
+	else if (0){
+
+		inverter(0, mag, PHASE_ORDER); //step_test
+
+		//
+
+		//if(step_test == 360)step_test = 0;
+//		inverter(120, mag, PHASE_ORDER); //3 3 -6
+//		inverter(270, mag, PHASE_ORDER); //-6 3 3
+
+		//M1 =
+		//M2 =
+
+
+
 	}
 	else if (Status == BLDC_STOPPED_AND_SHUTDOWN){
 		shutoff();
@@ -654,8 +675,8 @@ void run(){
 		Feedback.Status_setpoint = IRQ_STATUS_BUFF.setpoint;
 		Feedback.Status_mode = Status;
 
-		Feedback.Current_Q = q;
-		Feedback.Current_D = d;
+		Feedback.Current_Q = IRQ_Current_BUFF.Current_M1;
+		Feedback.Current_D = step_test;
 
 		Feedback.Voltage_magnitude = mag;
 		Feedback.Voltage_theta = theta;
@@ -678,8 +699,13 @@ void run(){
 
 #ifdef CURRENT_PID_CHECK_DEBUG
 
-	current_can_data[0 + current_can_data_index] = q;
-	current_can_data[8 + current_can_data_index] = d;
+	current_can_data[0 + current_can_data_index] = d;
+	current_can_data[8 + current_can_data_index] = q;
+
+
+//	current_can_data[0 + current_can_data_index] = IRQ_Current_BUFF.Current_M1;
+//	current_can_data[8 + current_can_data_index] = IRQ_Current_BUFF.Current_M3;
+
 //	uint8_t test_can[64];
 //	// Populate the array with values from 1 to 64
 //	for (int i = 0; i < 64; i++) {

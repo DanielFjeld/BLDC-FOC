@@ -19,7 +19,7 @@
 #include "print_server.h"
 #include "math.h"
 
-#define CAL_DUTY 100
+#define CAL_DUTY 150
 
 //uint32_t find_closest(float arr[], int length, float target);
 
@@ -110,7 +110,7 @@ void order_phases(Encoders *ps, Current *cs){ //, GPIOStruct *gpio, ControllerSt
     /// Rotate voltage angle
     while(theta_ref < 360*2){       //rotate for 2 electrical cycles
     	inverter((int16_t)theta_ref, CAL_DUTY, PHASE_ORDER);
-    	HAL_Delay(1);
+    	HAL_Delay(3);
        theta_actual = (float)ps->Encoder1_pos/1000; //sample position sensor
        if(theta_ref==0){theta_start = theta_actual;}
        if(sample_counter >= 1){
@@ -129,7 +129,7 @@ void order_phases(Encoders *ps, Current *cs){ //, GPIOStruct *gpio, ControllerSt
     if(direction){PrintServerPrintf("Phasing correct\n\r");}
     else if(!direction){PrintServerPrintf("Phasing incorrect.  Swapping phases V and W\n\r");}
     PHASE_ORDER = !direction;
-    HAL_Delay(10);
+    HAL_Delay(3);
     }
 
 float error_temp = 0.0f;
@@ -199,7 +199,7 @@ void calibrate(Encoders *ps, Current *cs){ //, PositionSensor *ps, GPIOStruct *g
        for(int j = 0; j<n2; j++){
         theta_ref += delta;
         inverter((int16_t)theta_ref, CAL_DUTY, PHASE_ORDER);
-        HAL_Delay(1);
+        HAL_Delay(3);
        theta_actual = (float)ps->Encoder1_pos/1000; //fixed position
        if(!i)theta_actual_last=theta_actual;
 
@@ -220,7 +220,7 @@ void calibrate(Encoders *ps, Current *cs){ //, PositionSensor *ps, GPIOStruct *g
        for(int j = 0; j<n2; j++){
        theta_ref -= delta;
        inverter((int16_t)theta_ref, CAL_DUTY, PHASE_ORDER);
-       HAL_Delay(1);                                                         // sample position sensor
+       HAL_Delay(3);                                                         // sample position sensor
        theta_actual = (float)ps->Encoder1_pos/1000;
 
        if(theta_actual-theta_actual_last < -90) theta_actual_count--;
