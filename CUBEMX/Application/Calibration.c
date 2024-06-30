@@ -185,9 +185,6 @@ void calibrate(Encoders *ps, Current *cs){ //, PositionSensor *ps, GPIOStruct *g
 
     //ps->WriteLUT(lut);
 
-
-
-
     ///Set voltage angle to zero, wait for rotor position to settle
     inverter((int16_t)theta_ref, CAL_DUTY, PHASE_ORDER);
     HAL_Delay(1000);
@@ -249,7 +246,11 @@ void calibrate(Encoders *ps, Current *cs){ //, PositionSensor *ps, GPIOStruct *g
         	error_filt[i] = 0.5f*(error_f[i] + error_b[n-i-1]);
         }
 
+        //float error_filt_temp_avg []
+
         //smoothArray(error_filt, n);
+
+
 
 
         PrintServerPrintf("\n\rEncoder Electrical Offset (deg) %f\n\r",  electrical_offset);

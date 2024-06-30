@@ -82,10 +82,11 @@
 #define MAX_CURRENT 10.0f       //amp
 #define MAX_VELOCITY 2000.0f   //RPM
 #define MIN_POSITION 0.0f      //degrees
-#define MAX_POSITION 360.0f    //degrees
+#define MAX_POSITION 360.0*12.5f    //degrees
+#define MAX_RAMP_RPM 2000
 //-----------------------------
 //----------------Position Ramp-----------
-float setpoint_ramp = 2000; //rpm ramp
+float setpoint_ramp = MAX_RAMP_RPM; //rpm ramp
 float position_setpoint = 0;
 
 
@@ -113,6 +114,8 @@ uint8_t current_can_data_index = 0;
 
 
 #define DAC_DEBUG
+
+#define CAN_CTRL
 
 uint32_t output_soft_start = 10000;
 
@@ -374,9 +377,9 @@ void BLDC_main(void){
 
 
 	//setup current
-	HAL_Delay(3000);
+	//HAL_Delay(3000);
 	current_init((void*)&Current_IRQ);
-	HAL_Delay(3000);
+	HAL_Delay(1000);
 	//setup encoder
 	ORBIS_init((void*)&Encoders_IRQ);
 
@@ -483,8 +486,17 @@ void run(){
 			temp_time_voltage_switching = 0;
 		}
 		position_setpoint = voltage_switching_val;
-	//position_setpoint = 0;
+	position_setpoint = 0;
+
+#else
+	if(IRQ_STATUS_BUFF.setpoint > MAX_POSITION)position_setpoint = MAX_POSITION;
+	else if(IRQ_STATUS_BUFF.setpoint < MIN_POSITION)position_setpoint = MIN_POSITION;
+	else position_setpoint = IRQ_STATUS_BUFF.setpoint;
+
+	if(IRQ_STATUS_BUFF.ramp < MAX_RAMP_RPM) setpoint_ramp = IRQ_STATUS_BUFF.ramp;
+	else setpoint_ramp = MAX_RAMP_RPM;
 #endif
+
 
 	//FSM
 	if(Status == BLDC_STOPPED_WITH_BREAK && IRQ_STATUS_BUFF.status == INPUT_CALIBRATE_ENCODER)Status = BLDC_CALIBRATING_ENCODER;
@@ -521,7 +533,7 @@ void run(){
 	aa_test1 = error_filt[index_error2];
 	aa_test2 = error_pos;
 	//mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, 0) + (int32_t)electrical_offset
-	angle = (mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos + (int32_t)error_filt[0]*1000, 0)  + (int16_t)(error_pos) + 2*360)%360;
+	angle = (mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos + (int32_t)error_filt[0]*1000, 0));//  + (int16_t)(error_pos) + 2*360)%360;
 
 	//dq0((float)angle*3.14159264f/180.0f, ((float)IRQ_Current_BUFF.Current_M3/1000.0f), ((float)IRQ_Current_BUFF.Current_M2/1000.0f), ((float)IRQ_Current_BUFF.Current_M1/1000.0f), &d, &q);
 	dq0((float)angle*3.14159264f/180.0f, ((float)IRQ_Current_BUFF.Current_M2/1000.0f), ((float)IRQ_Current_BUFF.Current_M3/1000.0f), ((float)IRQ_Current_BUFF.Current_M1/1000.0f), &d, &q);
@@ -579,12 +591,9 @@ void run(){
 	Current_PID_offset.Setpoint = 0;
 	Compute(&Current_PID_offset);
 
-
-
 	//-----------------set PWM--------------------- 3.12us
-	float V_d = Current_PID_offset.Output;
-	float V_q = Current_PID.Output; //voltage_switching_val; //Current_PID.Output; //
-
+	float V_d = Current_PID_offset.Output; //0;
+	float V_q = Current_PID.Output; //3
 
 	V_q = (V_q*1500.0f)/VBAT;
 	V_d = (V_d*1500.0f)/VBAT;
@@ -616,28 +625,13 @@ void run(){
 //	check_value(&LIMIT_temp, (float)IRQ_Voltage_Temp_BUFF.Temp_NTC1, &warning, &error, 6);
 //	check_value(&LIMIT_temp, (float)IRQ_Voltage_Temp_BUFF.Temp_NTC2, &warning, &error, 7);
 
-	//-----------------set PWM---------------------
+	//-----------------set PWM--------------------
 	error = 0;
+	//if(HAL_GetTick() > 10000)error = 1;
 	if(error){
 		Status = BLDC_ERROR;
 		//shutoff();
-		//shutdown();
-	}
-	else if (0){
-
-		inverter(0, mag, PHASE_ORDER); //step_test
-
-		//
-
-		//if(step_test == 360)step_test = 0;
-//		inverter(120, mag, PHASE_ORDER); //3 3 -6
-//		inverter(270, mag, PHASE_ORDER); //-6 3 3
-
-		//M1 =
-		//M2 =
-
-
-
+		shutdown();
 	}
 	else if (Status == BLDC_STOPPED_AND_SHUTDOWN){
 		shutoff();
@@ -656,11 +650,10 @@ void run(){
 			Current_PID_offset.outputSum = 0;
 			Angle_PID.outputSum = 0;
 		}
-
-		//inverter(angle + (int32_t)theta + 360*2, mag, 0);
 		}
 	else if (Status == BLDC_RUNNING){
-			}
+		inverter(angle + (int32_t)theta + 360*2, mag, PHASE_ORDER);
+		}
 	//--------------send can message------------------ 1us
 	//time keepers
 
@@ -686,9 +679,9 @@ void run(){
 		Feedback.Position_Calculated_pos = Angle_PID.Input;
 		Feedback.Position_Velocity = IRQ_Encoders_BUFF.Velocity;
 
-		Feedback.Current_setpoint  = Current_PID.Setpoint;
-		Feedback.Velocity_setpoint = Velocity_PID.Setpoint;
-		Feedback.Position_setpoint = Angle_PID.Setpoint;
+		Feedback.Current_setpoint  = TIM1->CCR1; //Current_PID.Setpoint;
+		Feedback.Velocity_setpoint = TIM1->CCR2;// Velocity_PID.Setpoint;
+		Feedback.Position_setpoint = TIM1->CCR3; //Angle_PID.Setpoint;
 		FDCAN_sendData(&hfdcan1, 0x42, (uint8_t*)&Feedback);
 
 		//-----------------PRINTF DEBUGGING-------------------
@@ -699,8 +692,11 @@ void run(){
 
 #ifdef CURRENT_PID_CHECK_DEBUG
 
-	current_can_data[0 + current_can_data_index] = d;
-	current_can_data[8 + current_can_data_index] = q;
+	current_can_data[0 + current_can_data_index] = TIM1->CCR2; //Angle_PID.Input;
+	current_can_data[8 + current_can_data_index] = angle + (int32_t)theta + 360*2; //angle;
+
+//	float V_d = Current_PID_offset.Output;
+//		float V_q = Current_PID.Output; //voltage_switching_val; //Current_PID.Output; //
 
 
 //	current_can_data[0 + current_can_data_index] = IRQ_Current_BUFF.Current_M1;
@@ -713,8 +709,7 @@ void run(){
 //	}
 	if(current_can_data_index == 7){
 		current_can_data_index = 0;
-		FDCAN_sendData(&hfdcan1, 0x69, (uint8_t*)&current_can_data);
-//		FDCAN_sendData(&hfdcan1, 0x69, (uint8_t*)&test_can);
+		//FDCAN_sendData(&hfdcan1, 0x69, (uint8_t*)&current_can_data);
 	}
 	else current_can_data_index++;
 
