@@ -19,7 +19,7 @@
 	#define V_CAL 0.15f;
 	#define LUT_SIZE 360
 	#define SIZE 16
-	#define NPP 17 //number of pole pairs
+	#define NPP 7 //number of pole pairs
 	#define CPR 16384//counts per revolution
 
 	extern uint8_t PHASE_ORDER;

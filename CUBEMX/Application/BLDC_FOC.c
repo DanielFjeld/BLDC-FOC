@@ -79,16 +79,15 @@
 //      SETUP
 #define VBAT 22.0f           //volt
 #define MAX_VOLTAGE 22.0f       //volt
-#define MAX_CURRENT 10.0f       //amp
-#define MAX_VELOCITY 2000.0f   //RPM
+#define MAX_CURRENT 5.0f       //amp
+#define MAX_VELOCITY 100.0f   //RPM
 #define MIN_POSITION 0.0f      //degrees
 #define MAX_POSITION 360.0*12.5f    //degrees
-#define MAX_RAMP_RPM 2000
+#define MAX_RAMP_RPM 100
 //-----------------------------
 //----------------Position Ramp-----------
 float setpoint_ramp = MAX_RAMP_RPM; //rpm ramp
 float position_setpoint = 0;
-
 
 uint32_t step_test = 0;
 
@@ -103,7 +102,7 @@ uint32_t step_test = 0;
 //#define Status_debug
 #define Position_debug
 
-#define CALIBRATE_ON_STARTUP
+//#define CALIBRATE_ON_STARTUP
 //#define DONT_USE_CALIBRATION
 #define CURRENT_PID_CHECK_DEBUG
 float current_can_data[16] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
@@ -592,8 +591,8 @@ void run(){
 	Current_PID.Setpoint = weight*(sinf((((float)IRQ_Encoders_BUFF.Encoder1_pos)/1000+storage->Encoder1_offset)*3.14159264/180));
 	#else
 
-//    Current_PID.Setpoint = 0.5;
-	Current_PID.Setpoint = Velocity_PID.Output;
+    Current_PID.Setpoint = 0.5;
+//	Current_PID.Setpoint = Velocity_PID.Output;
 
 	#endif
 	Compute(&Current_PID);
@@ -602,8 +601,8 @@ void run(){
 	Compute(&Current_PID_offset);
 
 	//-----------------set PWM--------------------- 3.12us
-	float V_d = Current_PID_offset.Output; //0;
-	float V_q = Current_PID.Output; //3
+	float V_d = 0; //Current_PID_offset.Output; //0;
+	float V_q = -3; //Current_PID.Output; //3
 
 	V_q = (V_q*1500.0f)/VBAT;
 	V_d = (V_d*1500.0f)/VBAT;

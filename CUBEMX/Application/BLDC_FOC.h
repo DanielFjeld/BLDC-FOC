@@ -24,7 +24,7 @@
 	#define CAN_PID_ID 0x5
 
 	//------MOTOR PARAM-----------------
-	#define polepairs 17
+	#define polepairs 7
 	#define offset 0//174506
 	#define deg_pr_pole 360000/polepairs
 	//-----------------------------------------------------
