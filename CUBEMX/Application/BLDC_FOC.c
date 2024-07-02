@@ -103,7 +103,7 @@ uint32_t step_test = 0;
 //#define Status_debug
 #define Position_debug
 
-//#define CALIBRATE_ON_STARTUP
+#define CALIBRATE_ON_STARTUP
 //#define DONT_USE_CALIBRATION
 #define CURRENT_PID_CHECK_DEBUG
 float current_can_data[16] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
@@ -381,7 +381,16 @@ void BLDC_main(void){
 	current_init((void*)&Current_IRQ);
 	HAL_Delay(1000);
 	//setup encoder
-	ORBIS_init((void*)&Encoders_IRQ);
+
+
+	uint32_t max_duty_cycle = 1499;
+	CTRL_init_PWM(&max_duty_cycle);
+
+#ifdef CALIBRATE_ON_STARTUP
+	ORBIS_init((void*)&Encoders_IRQ, 1);
+#else
+	ORBIS_init((void*)&Encoders_IRQ, 0);
+#endif
 
 	//setup voltage and temperature readings
 	voltage_temperature_init((void*)&Voltage_Temp_IRQ);
@@ -392,20 +401,21 @@ void BLDC_main(void){
 
 	FDCAN_Start(&hfdcan1);
 
+
+	HAL_TIM_Base_Start_IT(&htim3);
+
+
+
 	//--------------setup PWM------------------
-	electrical_offset = storage->electrical_offset;
-	PHASE_ORDER = storage->PHASE_ORDER;
-	mech_offset = storage->mech_offset;//storage->mech_offset;
-	if(mech_offset > 400)mech_offset = 0;
-	flash_nan = 0;
-	for(int i = 0; i < SIZE*NPP; i++){
-		if (isnan(storage->error_filt[i]))flash_nan = 1;
-	}
-	if(!flash_nan)memcpy(error_filt, storage->error_filt,sizeof(error_filt));
-
-
-	uint32_t test = 1499;
-	CTRL_init_PWM(&test);
+		electrical_offset = storage->electrical_offset;
+		PHASE_ORDER = storage->PHASE_ORDER;
+		mech_offset = storage->mech_offset;//storage->mech_offset;
+		if(mech_offset > 400)mech_offset = 0;
+		flash_nan = 0;
+		for(int i = 0; i < SIZE*NPP; i++){
+			if (isnan(storage->error_filt[i]))flash_nan = 1;
+		}
+		if(!flash_nan)memcpy(error_filt, storage->error_filt,sizeof(error_filt));
 
 	#ifdef CALIBRATE_ON_STARTUP
 	Status = BLDC_CALIBRATING_ENCODER;

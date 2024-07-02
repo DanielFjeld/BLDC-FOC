@@ -22,6 +22,6 @@
 
 	typedef void (*Encoders_Callback) (Encoders* data_encoders);
 
-	void ORBIS_init(Encoders_Callback __IRQ_callback);
+	void ORBIS_init(Encoders_Callback __IRQ_callback, uint8_t calibrate_on_start);
 
 #endif /* ENCODERS_SPI_H_ */

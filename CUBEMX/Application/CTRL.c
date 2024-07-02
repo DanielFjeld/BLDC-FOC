@@ -34,8 +34,6 @@ void CTRL_init_PWM(uint32_t *V_bat_ptr){
 	TIM1->CCR1 = 0;
 	TIM1->CCR2 = 0;
 	TIM1->CCR3 = 0;
-
-	HAL_TIM_Base_Start_IT(&htim3);
 }
 
 //sin(θ◦) ≈ 4θ(180 − θ) 40500 − θ(180 − θ);

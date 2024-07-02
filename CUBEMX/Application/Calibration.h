@@ -28,4 +28,5 @@
 
 	void order_phases(Encoders *ps, Current *cs);
 	void calibrate(Encoders *ps, Current *cs);
+	void rotate_inverter(uint8_t rounds);
 #endif /* CALIBRATION_H_ */

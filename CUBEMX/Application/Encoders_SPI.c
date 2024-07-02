@@ -12,11 +12,16 @@
 
 #include "Encoders_SPI.h"
 #include "BLDC_FOC.h"
+#include "Calibration.h"
 
 uint8_t CRC_SPI_97_64bit(uint64_t dw_InputData);
 
 #define ORBIS_SPI_SIZE 5
 #define ORBIS_NORNAL_OPERATION 't'
+
+uint8_t ORBIS_CALIBRATE_SEQ[] = {0xCD, 0xEF, 0x89, 0xAB, 0x41};
+//uint8_t ORBIS_CALIBRATE_SEQ[] = {0x41, 0xAB, 0x89, 0xEF, 0xCD};
+//uint8_t ORBIS_CALIBRATE_SEQ[] = {0, 0, 0, 0, 'A'};
 //#define ORBIS_ERROR_OPERATION 'd'
 
 uint8_t SPI1_tx_buff[ORBIS_SPI_SIZE] = {0};
@@ -48,12 +53,31 @@ uint8_t velocity_calc_index_encoder1 = 0;
  *
  *  max 4MHz
  */
-void ORBIS_init(Encoders_Callback __IRQ_callback){
+void ORBIS_init(Encoders_Callback __IRQ_callback, uint8_t calibrate_on_start){
 	HAL_GPIO_WritePin(ENCODER1_CS_GPIO_Port, ENCODER1_CS_Pin, 1);
 	HAL_GPIO_WritePin(ENCODER2_CS_GPIO_Port, ENCODER2_CS_Pin, 1);
 	//setup callback
 	Encoders_IRQ_callback = __IRQ_callback;
+	//while(1){
 
+	//calibrate
+	if(calibrate_on_start){
+		for(int i = 0; i < 5; i++){
+			HAL_GPIO_WritePin(ENCODER1_CS_GPIO_Port, ENCODER1_CS_Pin, 0);
+			HAL_Delay(1);
+			HAL_SPI_Transmit(&hspi1, &ORBIS_CALIBRATE_SEQ[i], 1, 100);
+			HAL_Delay(1);
+			HAL_GPIO_WritePin(ENCODER1_CS_GPIO_Port, ENCODER1_CS_Pin, 1);
+			HAL_Delay(1);
+		}
+		HAL_Delay(1000);
+		rotate_inverter(5);
+		HAL_Delay(1000);
+	}
+
+
+
+	//}
 	//setup DMA
 	SPI1_tx_buff[0] = ORBIS_NORNAL_OPERATION;
 	HAL_GPIO_WritePin(ENCODER1_CS_GPIO_Port, ENCODER1_CS_Pin, 0);
@@ -61,8 +85,6 @@ void ORBIS_init(Encoders_Callback __IRQ_callback){
 	HAL_SPI_TransmitReceive_DMA(&hspi1, SPI1_tx_buff, SPI1_rx_buff, ORBIS_SPI_SIZE);
 	HAL_SPI_TransmitReceive_DMA(&hspi3, SPI3_tx_buff, SPI3_rx_buff, ORBIS_SPI_SIZE);
 
-	//setup timer
-	HAL_TIM_Base_Start_IT(&htim3);
 
 }
 

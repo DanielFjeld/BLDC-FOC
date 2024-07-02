@@ -1,4 +1,4 @@
-../Application/Encoders_SPI.c:51:6:ORBIS_init	1
-../Application/Encoders_SPI.c:84:6:HAL_SPI_TxRxCpltCallback	12
-../Application/Encoders_SPI.c:157:6:HAL_TIM_PeriodElapsedCallback	1
-../Application/Encoders_SPI.c:188:9:CRC_SPI_97_64bit	1
+../Application/Encoders_SPI.c:56:6:ORBIS_init	3
+../Application/Encoders_SPI.c:106:6:HAL_SPI_TxRxCpltCallback	12
+../Application/Encoders_SPI.c:179:6:HAL_TIM_PeriodElapsedCallback	1
+../Application/Encoders_SPI.c:210:9:CRC_SPI_97_64bit	1

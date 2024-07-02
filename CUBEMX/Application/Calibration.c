@@ -25,6 +25,7 @@
 
 
 #define WINDOW_SIZE SIZE
+#define NEW_CAL
 
 
 float error_filt[SIZE*NPP] = {0};
@@ -192,6 +193,7 @@ void calibrate(Encoders *ps, Current *cs){ //, PositionSensor *ps, GPIOStruct *g
     dq0(theta_ref*pi/180, (float)cs->Current_M1/1000, (float)cs->Current_M2/1000, (float)cs->Current_M3/1000, &d, &q);
     float current = sqrt((d*d + q*q));
     PrintServerPrintf("Current Angle : Rotor Angle : Raw Encoder \n\r\n\r");
+#ifndef NEW_CAL
     for(int i = 0; i<n; i++){                                                   // rotate forwards
        for(int j = 0; j<n2; j++){
         theta_ref += delta;
@@ -235,23 +237,29 @@ void calibrate(Encoders *ps, Current *cs){ //, PositionSensor *ps, GPIOStruct *g
        //theta_ref -= delta;
         }
     }
+    electrical_offset = 0;
+            for(int i = 0; i<n; i++){
+            	electrical_offset += (error_f[i] + error_b[n-1-i])/(2.0f*n);                   // calclate average position sensor offset
+                }
+            electrical_offset = fmod(electrical_offset*NPP, 360);                                        // convert mechanical angle to electrical angle
 
-        electrical_offset = 0;
-        for(int i = 0; i<n; i++){
-        	electrical_offset += (error_f[i] + error_b[n-1-i])/(2.0f*n);                   // calclate average position sensor offset
+            for (int i = 0; i<n; i++){
+            	error_filt[i] = 0.5f*(error_f[i] + error_b[n-i-1]);
             }
-        electrical_offset = fmod(electrical_offset*NPP, 360);                                        // convert mechanical angle to electrical angle
+#else                                                  // rotate forwards
 
-        for (int i = 0; i<n; i++){
-        	error_filt[i] = 0.5f*(error_f[i] + error_b[n-i-1]);
-        }
-
-        //float error_filt_temp_avg []
-
-        //smoothArray(error_filt, n);
+	inverter(0, CAL_DUTY, PHASE_ORDER);
+	HAL_Delay(1000);
+	error_filt[0] = -(float)ps->Encoder1_pos/1000; //fixed position
 
 
-
-
+#endif
         PrintServerPrintf("\n\rEncoder Electrical Offset (deg) %f\n\r",  electrical_offset);
     }
+
+void rotate_inverter(uint8_t rounds){
+	for(uint16_t i = 0; i < 360*NPP*(uint16_t)rounds; i += 20){
+		inverter(i, CAL_DUTY, PHASE_ORDER);
+		HAL_Delay(1);
+	}
+}
