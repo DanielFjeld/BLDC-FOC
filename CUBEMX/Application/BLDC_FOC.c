@@ -5,36 +5,59 @@
  *      Author: Daniel
  */
 /*TODO:
- * Voltage input on inverter
- * Temp motor NTC
- * LPF Fmac
- * Zero voltage pause calibration
  *
- * Encoder/can timeout
- * encoder CRC
+ * 5. aborts/safety measures
+ *   1. how to safely stop
+ *   2. stop when
+ *     - loose CAN connection
+ *     - loose encoder connection
+ *     - over current
+ *     - outside limits (velocity, position, current)
+ *     - initialize abort through can
  *
+ * 1.calibration things:
+ *   1. auto calibrate min/max position/rotation on lin-ac by current draw
+ *   2. set calibration voltage by current
+ *   2. soft ramp calibration voltage
+ *   3. auto correct phases (M1, M2, M3) -- difficulty: fuck
+ *   3. auto find pole pairs in calibration
  *
- * OK---->Make driver for encoders (velocity and position)
- * OK---->encoder calibration (finds magnetic 0 DEG and create offset for encoder)(can be done manually)
- * OK---->Read voltage and temperature (in Current.c)
- * OK---->use buffer after callback to store all values that get changed in IRQ
- * create IIR or FIR filter with built in STM hardware
- * stop if no data or move to another position?
+ * 4. flash storage:
+ * - things to save/store/update over CAN to flash
+ *   - PID tunings
+ *   - limits for: current, speed, inverter voltage, position, max ramp speed
+ *   - battery voltage
  *
- * ---------TEST-------------
- * Test CAN messages
- * Test Current sensors
- * Test position encoder 1
- * Test position encoder 2
- * Test total Position
- * Test Velocity
- * Test voltage
- * Test temperature
+ *  CAN control:
+ * 3. initialize calibration(s)
+ *   - encoder calibration
+ *   - order phases (direction)
+ *   - find M1, M2, M3 (not implemented yet)
+ *   - position limits (duplicate ticket)
+ *   - shutoff (duplicate ticket)
  *
- * Test Heat generation @ 50A
- * Test slack and repeatability (while driving motor)
- * Test Torque
+ * 2. PID control
+ *   1. change tunings
+ *   3. enable/disable pids
+ *   2. position setpoint control
+ *   3. velocity control
+ *   3. current setpoint control (Q and D seperate)
+ *   3. voltage control (Q and D seperate)
  *
+ * 4. enable/disable CAN debug messages
+ *   - control what data to send on "high speed" debug
+ *
+ * 3. music control
+ *   - yep
+ *   - tetris
+ *   - imperial march
+ *   - con de partio
+ *   - star wars cantina
+ *   - super mario
+ *   - CAN music streaming
+ *   - CAN volume control
+ *
+ * - DAC output
  *
  * ----------IMPROVEMENTS----------
  * make PID and Limits use int32_t or make float faster
@@ -46,16 +69,7 @@
  * and store Limits and PID in flash memory (so it can be edited) also store calibration of encoders (offset)
  * add music to motor again
  *
- * ---------CAN test rig------
- * write to status register (buttons, Potentiometer and UART)
- * 		Potentiometer for setpoint
- * 		button to enable run (stop when released)
- * 		button to start calibration (single message) only need to run one time (can store it in memory) encoder 1 and 2
- *
- *print feedback on UART (use plotting program)(Arduino?) 200hz
- *
- *Zero gravity test
- */
+
 
 #include "main.h"
 #include "math.h"
