@@ -6,7 +6,7 @@
  */
 
 
-#include "calibration.h"
+#include "Calibration.h"
 //#include "foc.h"
 //#include "PreferenceWriter.h"
 //#include "user_config.h"
@@ -16,10 +16,10 @@
 #include "CTRL.h"
 #include "Encoders_SPI.h"
 #include "current_ADC.h"
-#include "print_server.h"
+#include "Print_server.h"
 #include "math.h"
 
-#define CAL_DUTY 400
+#define CAL_DUTY 200
 
 //uint32_t find_closest(float arr[], int length, float target);
 
@@ -258,8 +258,9 @@ void calibrate(Encoders *ps, Current *cs){ //, PositionSensor *ps, GPIOStruct *g
     }
 
 void rotate_inverter(uint8_t rounds){
-	for(uint16_t i = 0; i < 360*NPP*(uint16_t)rounds; i += 20){
+	for(uint16_t i = 0; i < 360*NPP*(uint16_t)rounds; i += 15){
 		inverter(i, CAL_DUTY, PHASE_ORDER);
 		HAL_Delay(1);
 	}
+	HAL_Delay(2000);
 }

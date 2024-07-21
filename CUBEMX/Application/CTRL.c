@@ -12,7 +12,7 @@
 #include "dma.h"
 
 
-#include "CURRENT_adc.h"
+#include "current_ADC.h"
 
 //PWM setup
 #define duty_max 1499

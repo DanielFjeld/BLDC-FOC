@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "usart.h"
-#include "print_server.h"
+#include "Print_server.h"
 /* Define print buffer size */
 #define PRINT_BUFFER_SIZE 512
 /* For convenience, define a pointer to UART handle */

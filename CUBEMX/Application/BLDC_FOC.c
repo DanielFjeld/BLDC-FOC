@@ -67,10 +67,10 @@
 #include "BLDC_FOC.h"
 #include "CTRL.h"
 #include "PID.h"
-#include "CURRENT_adc.h"
+#include "current_ADC.h"
 #include "fdcandriver.h"
 #include "Encoders_SPI.h"
-#include "print_server.h"
+#include "Print_server.h"
 #include "Flash.h"
 
 #include "Calibration.h"
@@ -79,11 +79,11 @@
 //      SETUP
 #define VBAT 22.0f           //volt
 #define MAX_VOLTAGE 22.0f       //volt
-#define MAX_CURRENT 5.0f       //amp
-#define MAX_VELOCITY 100.0f   //RPM
+#define MAX_CURRENT 16.0f //16.0f      //amp
+#define MAX_VELOCITY 6000.0f   //RPM
 #define MIN_POSITION 0.0f      //degrees
-#define MAX_POSITION 360.0*12.5f    //degrees
-#define MAX_RAMP_RPM 100
+#define MAX_POSITION 360.0*16.5f    //degrees
+#define MAX_RAMP_RPM 6000
 //-----------------------------
 //----------------Position Ramp-----------
 float setpoint_ramp = MAX_RAMP_RPM; //rpm ramp
@@ -127,6 +127,9 @@ uint32_t temp_time_voltage_switching = 0;
 int32_t voltage_switching_val = 3;
 
 //debug
+
+float step = 0.0f;
+int32_t step_step = 42;
 
 
 int32_t test_val = 0;
@@ -391,6 +394,8 @@ void BLDC_main(void){
 	ORBIS_init((void*)&Encoders_IRQ, 0);
 #endif
 
+
+	HAL_TIM_Base_Start_IT(&htim3);
 	//setup voltage and temperature readings
 	voltage_temperature_init((void*)&Voltage_Temp_IRQ);
 	//setup CAN
@@ -401,7 +406,6 @@ void BLDC_main(void){
 	FDCAN_Start(&hfdcan1);
 
 
-	HAL_TIM_Base_Start_IT(&htim3);
 
 
 
@@ -501,9 +505,22 @@ void run(){
 	if(IRQ_STATUS_BUFF.setpoint > MAX_POSITION)position_setpoint = MAX_POSITION;
 	else if(IRQ_STATUS_BUFF.setpoint < MIN_POSITION)position_setpoint = MIN_POSITION;
 	else position_setpoint = IRQ_STATUS_BUFF.setpoint;
-
 	if(IRQ_STATUS_BUFF.ramp < MAX_RAMP_RPM) setpoint_ramp = IRQ_STATUS_BUFF.ramp;
 	else setpoint_ramp = MAX_RAMP_RPM;
+
+//		step_step += 1;
+//
+//		if(step_step/10 <= 4000){
+//			position_setpoint = 0;
+//		}
+//		if(step_step/10 > 4000){
+//			position_setpoint = 16*360;
+//		}
+//		if(step_step/10 >= 8000){
+//			step_step = 0;
+//		}
+//
+//		setpoint_ramp = MAX_RAMP_RPM;
 #endif
 
 
@@ -544,11 +561,15 @@ void run(){
 	//mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos, 0) + (int32_t)electrical_offset
 	angle = (mech_to_el_deg(IRQ_Encoders_BUFF.Encoder1_pos + (int32_t)error_filt[0]*1000, 0));//  + (int16_t)(error_pos) + 2*360)%360;
 
-	//dq0((float)angle*3.14159264f/180.0f, ((float)IRQ_Current_BUFF.Current_M3/1000.0f), ((float)IRQ_Current_BUFF.Current_M2/1000.0f), ((float)IRQ_Current_BUFF.Current_M1/1000.0f), &d, &q);
-	dq0((float)angle*3.14159264f/180.0f, ((float)IRQ_Current_BUFF.Current_M2/1000.0f), ((float)IRQ_Current_BUFF.Current_M3/1000.0f), ((float)IRQ_Current_BUFF.Current_M1/1000.0f), &d, &q);
+	//dq0((float)angle*3.14dq0159264f/180.0f, ((float)IRQ_Current_BUFF.Current_M3/1000.0f), ((float)IRQ_Current_BUFF.Current_M2/1000.0f), ((float)IRQ_Current_BUFF.Current_M1/1000.0f), &d, &q);
+	dq0((float)angle*3.14159264f/180.0f, ((float)IRQ_Current_BUFF.Current_M3/1000.0f), ((float)IRQ_Current_BUFF.Current_M2/1000.0f), ((float)IRQ_Current_BUFF.Current_M1/1000.0f), &d, &q);
 
-	//2, 3, 1
-
+	//1,2,3
+	//1,3,2
+	//2,1,3
+	//2,3,1
+	//3,1,2
+	//3,2,1 pls
 
 	//q = -q;
 	//d = -d;
@@ -582,7 +603,7 @@ void run(){
 //	Angle_PID./Setpoint = (float)IRQ_STATUS_BUFF.setpoint;
 	Compute(&Angle_PID);
 
-//	Velocity_PID.Setpoint = -10.0;
+//	Velocity_PID.Setpoint = 600.0;
 	Velocity_PID.Setpoint = Angle_PID.Output;
 	Compute(&Velocity_PID);
 
@@ -591,8 +612,9 @@ void run(){
 	Current_PID.Setpoint = weight*(sinf((((float)IRQ_Encoders_BUFF.Encoder1_pos)/1000+storage->Encoder1_offset)*3.14159264/180));
 	#else
 
-    Current_PID.Setpoint = 0.5;
-//	Current_PID.Setpoint = Velocity_PID.Output;
+//    Current_PID.Setpoint = 2;
+	Current_PID.Setpoint = Velocity_PID.Output;
+
 
 	#endif
 	Compute(&Current_PID);
@@ -600,9 +622,10 @@ void run(){
 	Current_PID_offset.Setpoint = 0;
 	Compute(&Current_PID_offset);
 
-	//-----------------set PWM--------------------- 3.12us
-	float V_d = 0; //Current_PID_offset.Output; //0;
-	float V_q = -3; //Current_PID.Output; //3
+
+	//-----------------set PWM---------------urrent_PID.Output;------ 3.12us
+	float V_d = Current_PID_offset.Output; //0;
+	float V_q = Current_PID.Output; //Current_PID.Output; //Current_PID.Output; //3
 
 	V_q = (V_q*1500.0f)/VBAT;
 	V_d = (V_d*1500.0f)/VBAT;
@@ -688,9 +711,9 @@ void run(){
 		Feedback.Position_Calculated_pos = Angle_PID.Input;
 		Feedback.Position_Velocity = IRQ_Encoders_BUFF.Velocity;
 
-		Feedback.Current_setpoint  = TIM1->CCR1; //Current_PID.Setpoint;
-		Feedback.Velocity_setpoint = TIM1->CCR2;// Velocity_PID.Setpoint;
-		Feedback.Position_setpoint = TIM1->CCR3; //Angle_PID.Setpoint;
+		Feedback.Current_setpoint  = Current_PID.Setpoint; //TIM1->CCR1; //
+		Feedback.Velocity_setpoint = Velocity_PID.Setpoint; //TIM1->CCR2;//
+		Feedback.Position_setpoint = Angle_PID.Setpoint; //TIM1->CCR3; //
 		FDCAN_sendData(&hfdcan1, 0x42, (uint8_t*)&Feedback);
 
 		//-----------------PRINTF DEBUGGING-------------------
@@ -701,8 +724,8 @@ void run(){
 
 #ifdef CURRENT_PID_CHECK_DEBUG
 
-	current_can_data[0 + current_can_data_index] = TIM1->CCR2; //Angle_PID.Input;
-	current_can_data[8 + current_can_data_index] = angle + (int32_t)theta + 360*2; //angle;
+	current_can_data[0 + current_can_data_index] = q; //TIM1->CCR2; //Angle_PID.Input;
+	current_can_data[8 + current_can_data_index] = d; //angle + (int32_t)theta + 360*2; //angle;
 
 //	float V_d = Current_PID_offset.Output;
 //		float V_q = Current_PID.Output; //voltage_switching_val; //Current_PID.Output; //
@@ -718,7 +741,7 @@ void run(){
 //	}
 	if(current_can_data_index == 7){
 		current_can_data_index = 0;
-		//FDCAN_sendData(&hfdcan1, 0x69, (uint8_t*)&current_can_data);
+//		FDCAN_sendData(&hfdcan1, 0x69, (uint8_t*)&current_can_data);
 	}
 	else current_can_data_index++;
 
