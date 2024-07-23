@@ -182,9 +182,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim){
 	HAL_SPI_TransmitReceive_DMA(&hspi1, SPI1_tx_buff, SPI1_rx_buff, ORBIS_SPI_SIZE);
 	HAL_SPI_TransmitReceive_DMA(&hspi3, SPI3_tx_buff, SPI3_rx_buff, ORBIS_SPI_SIZE);
 
-	HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 1);
+	//HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 1);
 	run();
-	HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 0);
+	//HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 0);
 }
 
 

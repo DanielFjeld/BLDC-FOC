@@ -36,6 +36,7 @@
 		uint32_t Current_limit;
 		uint32_t Velocity_limit;
 
+
 		//encoder position
 		float Encoder1_offset;
 		float Encoder2_offset;
@@ -46,6 +47,8 @@
 		float error_filt[SIZE*NPP];
 		uint16_t mech_offset;
 
+		//CAN
+		
 
 
 

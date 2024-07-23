@@ -58,6 +58,7 @@
  *   - CAN volume control
  *
  * - DAC output
+ * 4. LED blink pattern
  *
  * ----------IMPROVEMENTS----------
  * make PID and Limits use int32_t or make float faster
@@ -68,7 +69,7 @@
  * set Limits from CAN
  * and store Limits and PID in flash memory (so it can be edited) also store calibration of encoders (offset)
  * add music to motor again
- *
+ */
 
 
 #include "main.h"
@@ -93,7 +94,7 @@
 //      SETUP
 #define VBAT 22.0f           //volt
 #define MAX_VOLTAGE 22.0f       //volt
-#define MAX_CURRENT 16.0f //16.0f      //amp
+#define MAX_CURRENT 5.0f //16.0f      //amp
 #define MAX_VELOCITY 6000.0f   //RPM
 #define MIN_POSITION 0.0f      //degrees
 #define MAX_POSITION 360.0*16.5f    //degrees
@@ -118,7 +119,7 @@ uint32_t step_test = 0;
 
 //#define CALIBRATE_ON_STARTUP
 //#define DONT_USE_CALIBRATION
-#define CURRENT_PID_CHECK_DEBUG
+//#define CURRENT_PID_CHECK_DEBUG
 float current_can_data[16] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
 uint8_t current_can_data_index = 0;
 
@@ -149,6 +150,13 @@ int32_t step_step = 42;
 int32_t test_val = 0;
 
 //#define ZERO_GRAVITY
+
+
+uint8_t start_MIN = 0;
+uint8_t start_MAX = 0;
+uint32_t MIN_MAX_count = 0;
+float MIN_POS = 0;
+float MAX_POS = 0;
 
 
 
@@ -441,7 +449,7 @@ void BLDC_main(void){
 
 	while(1){
 		if (Status == BLDC_CALIBRATING_ENCODER){
-			HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
+			//HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
 			order_phases(&IRQ_Encoders, &IRQ_Current);
 			calibrate(&IRQ_Encoders, &IRQ_Current);
 
@@ -516,11 +524,20 @@ void run(){
 	position_setpoint = 0;
 
 #else
-	if(IRQ_STATUS_BUFF.setpoint > MAX_POSITION)position_setpoint = MAX_POSITION;
-	else if(IRQ_STATUS_BUFF.setpoint < MIN_POSITION)position_setpoint = MIN_POSITION;
-	else position_setpoint = IRQ_STATUS_BUFF.setpoint;
-	if(IRQ_STATUS_BUFF.ramp < MAX_RAMP_RPM) setpoint_ramp = IRQ_STATUS_BUFF.ramp;
-	else setpoint_ramp = MAX_RAMP_RPM;
+	if(Status == BLDC_RUNNING){
+		//if(IRQ_STATUS_BUFF.setpoint > MAX_POSITION)position_setpoint = MAX_POSITION;
+		//else if(IRQ_STATUS_BUFF.setpoint < MIN_POSITION)position_setpoint = MIN_POSITION;
+		position_setpoint = IRQ_STATUS_BUFF.setpoint;
+		if(IRQ_STATUS_BUFF.ramp < MAX_RAMP_RPM) setpoint_ramp = IRQ_STATUS_BUFF.ramp;
+		else setpoint_ramp = MAX_RAMP_RPM;
+
+
+
+		if (position_setpoint < 0)position_setpoint = MIN_POS;
+		else if(position_setpoint > (MAX_POS - MIN_POS))position_setpoint = MAX_POS;
+		else position_setpoint = position_setpoint + MIN_POS;
+	}
+
 
 //		step_step += 1;
 //
@@ -554,6 +571,14 @@ void run(){
 		SetMode(&Angle_PID,  MANUAL);
 	}
 	else if(Status == BLDC_RUNNING && IRQ_STATUS_BUFF.status == INPUT_STOP_AND_SHUTDOWN)Status = BLDC_STOPPED_AND_SHUTDOWN;
+	else if(Status == BLDC_STOPPED_WITH_BREAK && IRQ_STATUS_BUFF.status == START_MAX_MIN_POSITION_CALIBRATION){
+		Status = BLDC_MIN_MAX_POSITION;
+		start_MIN = 1;
+		start_MAX = 1;
+		IRQ_Status.status = 0xffff;
+	}
+
+
 
 
 	//----------------------position-----------------
@@ -595,17 +620,19 @@ void run(){
 	ramp_angle /= (LOOP_FREQ_KHZ*1000); //degrees per update
 
 	//ramp_angle = 0.1;
+	if(Status == BLDC_RUNNING){
+		float position_error = position_setpoint - Angle_PID.Setpoint;
+		if(abs(position_error) <= ramp_angle){
+			position_setpoint = Angle_PID.Setpoint;
+		}
+		else if(position_error > 0){
+			Angle_PID.Setpoint += ramp_angle;
+		}
+		else{
+			Angle_PID.Setpoint -= ramp_angle;
+		}
+	}
 
-	float position_error = position_setpoint - Angle_PID.Setpoint;
-	if(abs(position_error) <= ramp_angle){
-		position_setpoint = Angle_PID.Setpoint;
-	}
-	else if(position_error > 0){
-		Angle_PID.Setpoint += ramp_angle;
-	}
-	else{
-		Angle_PID.Setpoint -= ramp_angle;
-	}
 
 	//------------------calculate PID----------------------- 6.52us
 	Angle_PID.Input = ((float)IRQ_Encoders_BUFF.Encoder1_pos)/1000.0f + position_overflow*360.0f + storage->Encoder1_offset;
@@ -613,33 +640,58 @@ void run(){
 	Current_PID.Input = q;
 	Current_PID_offset.Input = d;
 
+	float V_d = 0;
+	float V_q = 0;
+	if(Status == BLDC_RUNNING){
+		Compute(&Angle_PID);
+		Velocity_PID.Setpoint = Angle_PID.Output;
+		Compute(&Velocity_PID);
+		Current_PID.Setpoint = Velocity_PID.Output;
+		Compute(&Current_PID);
+		Current_PID_offset.Setpoint = 0;
+		Compute(&Current_PID_offset);
 
-//	Angle_PID./Setpoint = (float)IRQ_STATUS_BUFF.setpoint;
-	Compute(&Angle_PID);
+		//-----------------set PWM---------------urrent_PID.Output;------ 3.12us
+		V_d = Current_PID_offset.Output;
+		V_q = Current_PID.Output;
+	}
+	else if(Status == BLDC_MIN_MAX_POSITION){
+		MIN_MAX_count++;
+		if(start_MIN == 1)Velocity_PID.Setpoint = -200;
+		else if(start_MAX == 1)Velocity_PID.Setpoint = 200;
+		else {
+			Velocity_PID.Setpoint = 0;
+			Status = BLDC_STOPPED_WITH_BREAK;
+		}
+		uint16_t margin = 180;
 
-//	Velocity_PID.Setpoint = 600.0;
-	Velocity_PID.Setpoint = Angle_PID.Output;
-	Compute(&Velocity_PID);
+		if(abs(IRQ_Encoders_BUFF.Velocity) < 10 && MIN_MAX_count > 1000){
+			if(start_MIN == 1){
+				MIN_MAX_count = 0;
+				start_MIN = 0;
+				MIN_POS = Angle_PID.Input + margin;
 
-	#ifdef ZERO_GRAVITY
-	float weight = 4.7; //amps at 90 degrees;
-	Current_PID.Setpoint = weight*(sinf((((float)IRQ_Encoders_BUFF.Encoder1_pos)/1000+storage->Encoder1_offset)*3.14159264/180));
-	#else
-
-//    Current_PID.Setpoint = 2;
-	Current_PID.Setpoint = Velocity_PID.Output;
-
-
-	#endif
-	Compute(&Current_PID);
-
-	Current_PID_offset.Setpoint = 0;
-	Compute(&Current_PID_offset);
+			}
+			else{
+				start_MAX = 0;
+				MIN_MAX_count = 0;
+				MAX_POS = Angle_PID.Input - margin;
+			}
+		}
 
 
-	//-----------------set PWM---------------urrent_PID.Output;------ 3.12us
-	float V_d = Current_PID_offset.Output; //0;
-	float V_q = Current_PID.Output; //Current_PID.Output; //Current_PID.Output; //3
+		Compute(&Velocity_PID);
+		Current_PID.Setpoint = Velocity_PID.Output;
+		Compute(&Current_PID);
+		Current_PID_offset.Setpoint = 0;
+		Compute(&Current_PID_offset);
+
+		//-----------------set PWM---------------urrent_PID.Output;------ 3.12us
+		V_d = Current_PID_offset.Output;
+		V_q = Current_PID.Output;
+	}
+
+
 
 	V_q = (V_q*1500.0f)/VBAT;
 	V_d = (V_d*1500.0f)/VBAT;
@@ -676,7 +728,6 @@ void run(){
 	//if(HAL_GetTick() > 10000)error = 1;
 	if(error){
 		Status = BLDC_ERROR;
-		//shutoff();
 		shutdown();
 	}
 	else if (Status == BLDC_STOPPED_AND_SHUTDOWN){
@@ -684,22 +735,22 @@ void run(){
 		shutdown();
 	}
 	else if (Status == BLDC_STOPPED_WITH_BREAK){
-//			shutoff();
-		if(output_soft_start == 0)
-			inverter(angle + (int32_t)theta + 360*2, mag, PHASE_ORDER);
-		else{
-
-			output_soft_start--;
-			shutoff();
-			Velocity_PID.outputSum = 0;
-			Current_PID.outputSum = 0;
-			Current_PID_offset.outputSum = 0;
-			Angle_PID.outputSum = 0;
-		}
-		}
-	else if (Status == BLDC_RUNNING){
+		Angle_PID.Setpoint = Angle_PID.Input;
+		shutoff();
+		Velocity_PID.outputSum = 0;
+		Current_PID.outputSum = 0;
+		Current_PID_offset.outputSum = 0;
+		Angle_PID.outputSum = 0;
+	}
+	else if (Status == BLDC_RUNNING || Status == BLDC_MIN_MAX_POSITION){
 		inverter(angle + (int32_t)theta + 360*2, mag, PHASE_ORDER);
 		}
+
+
+	if(Status != BLDC_RUNNING){
+		if(IRQ_STATUS_BUFF.status == SET_LED)HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, IRQ_STATUS_BUFF.setpoint);
+
+	}
 	//--------------send can message------------------ 1us
 	//time keepers
 
@@ -741,21 +792,9 @@ void run(){
 	current_can_data[0 + current_can_data_index] = q; //TIM1->CCR2; //Angle_PID.Input;
 	current_can_data[8 + current_can_data_index] = d; //angle + (int32_t)theta + 360*2; //angle;
 
-//	float V_d = Current_PID_offset.Output;
-//		float V_q = Current_PID.Output; //voltage_switching_val; //Current_PID.Output; //
-
-
-//	current_can_data[0 + current_can_data_index] = IRQ_Current_BUFF.Current_M1;
-//	current_can_data[8 + current_can_data_index] = IRQ_Current_BUFF.Current_M3;
-
-//	uint8_t test_can[64];
-//	// Populate the array with values from 1 to 64
-//	for (int i = 0; i < 64; i++) {
-//		test_can[i] = i + 1;
-//	}
 	if(current_can_data_index == 7){
 		current_can_data_index = 0;
-//		FDCAN_sendData(&hfdcan1, 0x69, (uint8_t*)&current_can_data);
+		FDCAN_sendData(&hfdcan1, 0x69, (uint8_t*)&current_can_data);
 	}
 	else current_can_data_index++;
 
