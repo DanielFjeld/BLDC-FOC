@@ -20,7 +20,7 @@ const char ID[] =  {ID_STRING};
 Flash *ptr = (Flash*)(FLASH_BASE + PAGE_SIZE*PAGE_NUMBER);
 Flash Stored_in_RAM = {0};
 
-#define RAM_COMPARE 94
+#define RAM_COMPARE 94+100
 Flash RAM = {
 		.ID = ID_STRING,
 
@@ -43,7 +43,17 @@ Flash RAM = {
 		.Velocity_limit = 4000.0f, //rpm
 		.Current_limit = 10.0f, //ampere
 
-		.Encoder1_offset = 5.0f
+		.Encoder1_offset = 5.0f,
+
+		.VBAT = 22.0f,           //volt
+		.MAX_VOLTAGE = 22.0f,       //volt
+		.MAX_CURRENT = 5.0f, //16.0f      //amp
+		.MAX_VELOCITY = 6000.0f,   //RPM
+		.MIN_POSITION = 0.0f,      //degrees
+		.MAX_POSITION = 360.0*16.5f,    //degrees
+		.MAX_RAMP_RPM = 6000,
+
+		.calibrate_on_start = 1
 };
 
 uint64_t test_data[2] = {0};
@@ -71,10 +81,10 @@ void flash_write(uint32_t page, uint64_t data[], uint32_t size){
     HAL_FLASH_Lock();
 }
 
-void Flash_init(){
-	if (memcmp(ptr, &RAM, RAM_COMPARE)){
-		memcpy(&Stored_in_RAM, ptr, sizeof(Flash));
-		memcpy(&Stored_in_RAM, &RAM, RAM_COMPARE);
+void Flash_init(uint8_t use_flash){
+	if (!use_flash || memcmp(RAM.ID, ptr->ID, sizeof(ID_STRING) != 0)){
+		//memcpy(&Stored_in_RAM, ptr, sizeof(Flash));
+		memcpy(&Stored_in_RAM, &RAM, sizeof(Flash));
 		Flash_save();
 	}
 	else memcpy(&Stored_in_RAM, ptr, sizeof(Flash));
@@ -86,4 +96,8 @@ void Flash_save(){
 
 Flash *Flash_get_values(){
 	return &Stored_in_RAM; //*ptr;// = flash_read(FLASH_BASE + PAGE_SIZE*PAGE_NUMBER);
+}
+void flash_check(){
+	if(memcmp(&Stored_in_RAM, ptr, sizeof(Flash)) == 0) HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 1);
+	else HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 0);
 }

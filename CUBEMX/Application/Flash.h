@@ -48,7 +48,14 @@
 		uint16_t mech_offset;
 
 		//CAN
-		
+		uint8_t calibrate_on_start;
+		float VBAT;
+		float MAX_VOLTAGE;
+		float MAX_CURRENT;
+		float MAX_VELOCITY;
+		float MIN_POSITION;
+		float MAX_POSITION;
+		float MAX_RAMP_RPM;
 
 
 
@@ -57,10 +64,12 @@
 		uint64_t PADDING_ZERO;
 	}Flash;
 
-	void Flash_init();
+	void Flash_init(uint8_t use_flash);
 
 	void Flash_save();
 
 	Flash * Flash_get_values();
+
+	void flash_check();
 
 #endif /* FLASH_H_ */

@@ -124,7 +124,7 @@
 		SET_PID_CURRENT_Q_D,
 
 		//start calibration
-		START_ENCODER_CALIBRATION,
+		START_ENCODER_CALIBRATION_ON_START,
 		START_MAX_MIN_POSITION_CALIBRATION,
 
 		//reset flash (need to redo calibration before start)
@@ -139,6 +139,17 @@
 		
 		//turn on led
 		SET_LED,
+
+		SAVE_FLASH,
+		SYSTEM_RESET,
+
+		SET_VBAT,
+		SET_MAX_VOLTAGE,
+		SET_MAX_CURRENT,
+		SET_MAX_VELOCITY,
+		SET_MIN_POSITION,
+		SET_MAX_POSITION,
+		SET_MAX_RAMP_RPM,
 
 		
 

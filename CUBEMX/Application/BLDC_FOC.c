@@ -92,16 +92,10 @@
 
 //-----------------------------------
 //      SETUP
-#define VBAT 22.0f           //volt
-#define MAX_VOLTAGE 22.0f       //volt
-#define MAX_CURRENT 5.0f //16.0f      //amp
-#define MAX_VELOCITY 6000.0f   //RPM
-#define MIN_POSITION 0.0f      //degrees
-#define MAX_POSITION 360.0*16.5f    //degrees
-#define MAX_RAMP_RPM 6000
+
 //-----------------------------
 //----------------Position Ramp-----------
-float setpoint_ramp = MAX_RAMP_RPM; //rpm ramp
+float setpoint_ramp = 0;
 float position_setpoint = 0;
 
 uint32_t step_test = 0;
@@ -364,35 +358,38 @@ Flash *storage;
 
 #define PID_TIMING 10
 void BLDC_main(void){
-	Flash_init();
+	HAL_Delay(1000);
+	Flash_init(1); //if 0 one must re calibrate every startup
 	storage = Flash_get_values();
+
+	setpoint_ramp = storage->MAX_RAMP_RPM; //rpm ramp
 
 	HAL_Delay(100);
 	//----------------PID---------
 	SetSampleTime(&Current_PID, PID_TIMING);
 	SetTunings(&Current_PID, storage->Current_kp, storage->Current_ki, storage->Current_kd, 1);
-	SetOutputLimits(&Current_PID, -MAX_VOLTAGE, MAX_VOLTAGE);
+	SetOutputLimits(&Current_PID, -storage->MAX_VOLTAGE, storage->MAX_VOLTAGE);
 	SetControllerDirection(&Current_PID, DIRECT);
 	SetMode(&Current_PID,  AUTOMATIC);
 	Initialize(&Current_PID);
 
 	SetSampleTime(&Velocity_PID, PID_TIMING);
 	SetTunings(&Velocity_PID, storage->Velocity_kp, storage->Velocity_ki, storage->Velocity_kd, 1);
-	SetOutputLimits(&Velocity_PID, -MAX_CURRENT, MAX_CURRENT);
+	SetOutputLimits(&Velocity_PID, -storage->MAX_CURRENT, storage->MAX_CURRENT);
 	SetControllerDirection(&Velocity_PID, DIRECT);
 	SetMode(&Velocity_PID,  AUTOMATIC);
 	Initialize(&Velocity_PID);
 
 	SetSampleTime(&Angle_PID, PID_TIMING);
 	SetTunings(&Angle_PID, storage->Angle_kp, storage->Angle_ki, storage->Angle_kd, 1);
-	SetOutputLimits(&Angle_PID, -MAX_VELOCITY, MAX_VELOCITY);
+	SetOutputLimits(&Angle_PID, -storage->MAX_VELOCITY, storage->MAX_VELOCITY);
 	SetControllerDirection(&Angle_PID, DIRECT);
 	SetMode(&Angle_PID,  AUTOMATIC);
 	Initialize(&Angle_PID);
 
 	SetSampleTime(&Current_PID_offset, PID_TIMING);
 	SetTunings(&Current_PID_offset, storage->Current_offset_kp, storage->Current_offset_ki, storage->Current_offset_kd, 1);
-	SetOutputLimits(&Current_PID_offset, -MAX_VOLTAGE, MAX_VOLTAGE);
+	SetOutputLimits(&Current_PID_offset, -storage->MAX_VOLTAGE, storage->MAX_VOLTAGE);
 	SetControllerDirection(&Current_PID_offset, DIRECT);
 	SetMode(&Current_PID_offset,  AUTOMATIC);
 	Initialize(&Current_PID_offset);
@@ -410,11 +407,14 @@ void BLDC_main(void){
 	uint32_t max_duty_cycle = 1499;
 	CTRL_init_PWM(&max_duty_cycle);
 
-#ifdef CALIBRATE_ON_STARTUP
-	ORBIS_init((void*)&Encoders_IRQ, 1);
-#else
-	ORBIS_init((void*)&Encoders_IRQ, 0);
-#endif
+//#ifdef CALIBRATE_ON_STARTUP
+//	ORBIS_init((void*)&Encoders_IRQ, 1);
+//#else
+//	ORBIS_init((void*)&Encoders_IRQ, 0);
+//#endif
+
+	if(storage->calibrate_on_start)ORBIS_init((void*)&Encoders_IRQ, 1);
+	else ORBIS_init((void*)&Encoders_IRQ, 0);
 
 
 	HAL_TIM_Base_Start_IT(&htim3);
@@ -440,14 +440,16 @@ void BLDC_main(void){
 		for(int i = 0; i < SIZE*NPP; i++){
 			if (isnan(storage->error_filt[i]))flash_nan = 1;
 		}
-		if(!flash_nan)memcpy(error_filt, storage->error_filt,sizeof(error_filt));
+		if(!flash_nan)memcpy(error_filt, storage->error_filt, 1);
 
 	#ifdef CALIBRATE_ON_STARTUP
 	Status = BLDC_CALIBRATING_ENCODER;
 	#endif
 
+	if(storage->calibrate_on_start)Status = BLDC_CALIBRATING_ENCODER;
 
 	while(1){
+		flash_check();
 		if (Status == BLDC_CALIBRATING_ENCODER){
 			//HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
 			order_phases(&IRQ_Encoders, &IRQ_Current);
@@ -457,6 +459,7 @@ void BLDC_main(void){
 			storage->mech_offset = (int16_t)(IRQ_Encoders.Encoder1_pos/1000)%360;
 			storage->electrical_offset = electrical_offset;
 			storage->PHASE_ORDER = PHASE_ORDER;
+			storage->calibrate_on_start = 0;
 			memcpy(storage->error_filt,error_filt,sizeof(error_filt));
 			Flash_save();
 			Status = BLDC_STOPPED_WITH_BREAK;
@@ -528,8 +531,8 @@ void run(){
 		//if(IRQ_STATUS_BUFF.setpoint > MAX_POSITION)position_setpoint = MAX_POSITION;
 		//else if(IRQ_STATUS_BUFF.setpoint < MIN_POSITION)position_setpoint = MIN_POSITION;
 		position_setpoint = IRQ_STATUS_BUFF.setpoint;
-		if(IRQ_STATUS_BUFF.ramp < MAX_RAMP_RPM) setpoint_ramp = IRQ_STATUS_BUFF.ramp;
-		else setpoint_ramp = MAX_RAMP_RPM;
+		if(IRQ_STATUS_BUFF.ramp < storage->MAX_RAMP_RPM) setpoint_ramp = IRQ_STATUS_BUFF.ramp;
+		else setpoint_ramp = storage->MAX_RAMP_RPM;
 
 
 
@@ -575,11 +578,14 @@ void run(){
 		Status = BLDC_MIN_MAX_POSITION;
 		start_MIN = 1;
 		start_MAX = 1;
-		IRQ_Status.status = 0xffff;
+		//MIN_MAX_count = 0;
+		IRQ_Status.status = BLDC_STOPPED_WITH_BREAK;
+		IRQ_STATUS_BUFF.status = BLDC_STOPPED_WITH_BREAK;
+
+		SetMode(&Velocity_PID,  AUTOMATIC);
+		SetMode(&Current_PID,  AUTOMATIC);
+		SetMode(&Angle_PID,  AUTOMATIC);
 	}
-
-
-
 
 	//----------------------position-----------------
 	if (last_pos_enc > 270000 && IRQ_Encoders_BUFF.Encoder1_pos < 90000)position_overflow++;
@@ -635,7 +641,7 @@ void run(){
 
 
 	//------------------calculate PID----------------------- 6.52us
-	Angle_PID.Input = ((float)IRQ_Encoders_BUFF.Encoder1_pos)/1000.0f + position_overflow*360.0f + storage->Encoder1_offset;
+	Angle_PID.Input = ((float)IRQ_Encoders_BUFF.Encoder1_pos)/1000.0f + position_overflow*360.0f;// + storage->Encoder1_offset;
 	Velocity_PID.Input = IRQ_Encoders_BUFF.Velocity;
 	Current_PID.Input = q;
 	Current_PID_offset.Input = d;
@@ -693,8 +699,8 @@ void run(){
 
 
 
-	V_q = (V_q*1500.0f)/VBAT;
-	V_d = (V_d*1500.0f)/VBAT;
+	V_q = (V_q*1500.0f)/storage->VBAT;
+	V_d = (V_d*1500.0f)/storage->VBAT;
 
 	//V_q = 50;
 	if(V_d == 0 && V_q == 0) V_q = 1; //silly hot fix to not make atan go wank
@@ -749,7 +755,26 @@ void run(){
 
 	if(Status != BLDC_RUNNING){
 		if(IRQ_STATUS_BUFF.status == SET_LED)HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, IRQ_STATUS_BUFF.setpoint);
+		if(IRQ_STATUS_BUFF.status == START_ENCODER_CALIBRATION_ON_START)storage->calibrate_on_start = 1;
 
+		if(IRQ_STATUS_BUFF.status == SET_VBAT)storage->VBAT = IRQ_STATUS_BUFF.setpoint;           //volt
+		if(IRQ_STATUS_BUFF.status == SET_MAX_VOLTAGE)storage->MAX_VOLTAGE = IRQ_STATUS_BUFF.setpoint;       //volt
+		if(IRQ_STATUS_BUFF.status == SET_MAX_CURRENT)storage->MAX_CURRENT = IRQ_STATUS_BUFF.setpoint; //16.0f      //amp
+		if(IRQ_STATUS_BUFF.status == SET_MAX_VELOCITY)storage->MAX_VELOCITY = IRQ_STATUS_BUFF.setpoint;   //RPM
+		if(IRQ_STATUS_BUFF.status == SET_MIN_POSITION)storage->MIN_POSITION = IRQ_STATUS_BUFF.setpoint;     //degrees
+		if(IRQ_STATUS_BUFF.status == SET_MAX_POSITION)storage->MAX_POSITION = IRQ_STATUS_BUFF.setpoint;    //degrees
+		if(IRQ_STATUS_BUFF.status == SET_MAX_RAMP_RPM)storage->MAX_RAMP_RPM = IRQ_STATUS_BUFF.setpoint;
+
+
+
+
+		if(IRQ_STATUS_BUFF.status == SAVE_FLASH){
+			Flash_save();
+			IRQ_STATUS_BUFF.status = BLDC_STOPPED_WITH_BREAK;
+			IRQ_Status.status = BLDC_STOPPED_WITH_BREAK;
+
+		}
+		if(IRQ_STATUS_BUFF.status == SYSTEM_RESET)NVIC_SystemReset();
 	}
 	//--------------send can message------------------ 1us
 	//time keepers
@@ -771,8 +796,8 @@ void run(){
 		Feedback.Voltage_magnitude = mag;
 		Feedback.Voltage_theta = theta;
 
-		Feedback.Position_Encoder1_pos = IRQ_Encoders_BUFF.Encoder1_pos/1000.0f;
-		Feedback.Position_Encoder2_pos = IRQ_Encoders_BUFF.Encoder2_pos/1000.0f;
+		Feedback.Position_Encoder1_pos = (float)IRQ_Encoders_BUFF.Encoder1_pos/1000.0f;
+		Feedback.Position_Encoder2_pos = (float)IRQ_Encoders_BUFF.Encoder2_pos/1000.0f;
 		Feedback.Position_Calculated_pos = Angle_PID.Input;
 		Feedback.Position_Velocity = IRQ_Encoders_BUFF.Velocity;
 
@@ -785,6 +810,7 @@ void run(){
 		//will print same info as on CAN-BUS
 
 	}
+
 #endif
 
 #ifdef CURRENT_PID_CHECK_DEBUG
