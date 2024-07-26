@@ -91,6 +91,7 @@
 #include "Calibration.h"
 
 //-----------------------------------
+#define LOOP_TIME_LED_DEBUG
 //      SETUP
 
 //-----------------------------
@@ -119,10 +120,7 @@ uint8_t current_can_data_index = 0;
 
 
 #define SEND_CAN_DATA
-
-
 #define DAC_DEBUG
-
 #define CAN_CTRL
 
 uint32_t output_soft_start = 10000;
@@ -136,30 +134,22 @@ uint32_t temp_time_voltage_switching = 0;
 int32_t voltage_switching_val = 3;
 
 //debug
-
 float step = 0.0f;
 int32_t step_step = 42;
-
-
 int32_t test_val = 0;
 
 //#define ZERO_GRAVITY
-
-
 uint8_t start_MIN = 0;
 uint8_t start_MAX = 0;
 uint32_t MIN_MAX_count = 0;
 float MIN_POS = 0;
 float MAX_POS = 0;
 
-
-
 //-------------------MISC-----------------
 uint8_t Current_Callback_flag = 0;
 uint32_t timing_CAN_feedback = 0;
 uint32_t running_LED_timing = 0;
 uint32_t error = 0;					//error bits
-
 
 int16_t mech_to_el_deg(int32_t angle_deg, int32_t offset_deg);
 
@@ -203,7 +193,6 @@ float MusicPhase = 0.0;  // Phase of the sine wave, persists between function ca
 //----------------------CAN--------------------
 CAN_Status IRQ_Status;
 CAN_Feedback Feedback;
-
 
 //---------------------PID---------------------
 PID_instance Current_PID_offset = {0};
@@ -353,9 +342,7 @@ CAN_Status  IRQ_STATUS_BUFF = {0};
 BLDC_STATUS_Feedback Status = BLDC_STOPPED_WITH_BREAK;
 
 uint32_t last_pos_enc = 0;
-
 int32_t position_overflow = 0;
-
 Flash *storage;
 
 #define PID_TIMING 10
@@ -424,7 +411,7 @@ void BLDC_main(void){
 	voltage_temperature_init((void*)&Voltage_Temp_IRQ);
 	//setup CAN
 	//-----------------CAN----------------------
-	FDCAN_addCallback(&hfdcan1, 0x22, (void*)&Can_RX_Status_IRQ);
+	FDCAN_addCallback(&hfdcan1, (storage->CAN_ID & 0x3F0), (void*)&Can_RX_Status_IRQ);
 //	FDCAN_addCallback(&hfdcan1, (CAN_PID_ID << 8) 	| (CAN_DEVICE_ID << 4) | (CAN_BLDC_ID << 0), (void*)&Can_RX_PID_IRQ);
 
 	FDCAN_Start(&hfdcan1);
@@ -508,10 +495,11 @@ void BLDC_main(void){
 uint32_t timing_Angle = 0;
 
 void run(){
-	#ifdef RUNNING_LED_DEBUG
-//	HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 1);
-//	HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 0);
-	#endif
+#ifdef LOOP_TIME_LED_DEBUG
+	HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 1);
+	HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 0);
+	HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 1);
+#endif
 
 	memcpy(&IRQ_Current_BUFF, &IRQ_Current, sizeof(Current));
 	memcpy(&IRQ_Voltage_Temp_BUFF, &IRQ_Voltage_Temp, sizeof(Voltage_Temp));
@@ -530,36 +518,16 @@ void run(){
 
 #else
 	if(Status == BLDC_RUNNING){
-		//if(IRQ_STATUS_BUFF.setpoint > MAX_POSITION)position_setpoint = MAX_POSITION;
-		//else if(IRQ_STATUS_BUFF.setpoint < MIN_POSITION)position_setpoint = MIN_POSITION;
 		position_setpoint = IRQ_STATUS_BUFF.setpoint;
 		if(IRQ_STATUS_BUFF.ramp < storage->MAX_RAMP_RPM) setpoint_ramp = IRQ_STATUS_BUFF.ramp;
 		else setpoint_ramp = storage->MAX_RAMP_RPM;
-
-
 
 		if (position_setpoint < 0)position_setpoint = MIN_POS;
 		else if(position_setpoint > (MAX_POS - MIN_POS))position_setpoint = MAX_POS;
 		else position_setpoint = position_setpoint + MIN_POS;
 	}
 
-
-//		step_step += 1;
-//
-//		if(step_step/10 <= 4000){
-//			position_setpoint = 0;
-//		}
-//		if(step_step/10 > 4000){
-//			position_setpoint = 16*360;
-//		}
-//		if(step_step/10 >= 8000){
-//			step_step = 0;
-//		}
-//
-//		setpoint_ramp = MAX_RAMP_RPM;
 #endif
-
-
 	//FSM
 	if(Status == BLDC_STOPPED_WITH_BREAK && IRQ_STATUS_BUFF.status == INPUT_CALIBRATE_ENCODER)Status = BLDC_CALIBRATING_ENCODER;
 	else if(Status == BLDC_STOPPED_WITH_BREAK && IRQ_STATUS_BUFF.status == INPUT_RESET_ERRORS)error = 0;
@@ -615,16 +583,6 @@ void run(){
 	//dq0((float)angle*3.14dq0159264f/180.0f, ((float)IRQ_Current_BUFF.Current_M3/1000.0f), ((float)IRQ_Current_BUFF.Current_M2/1000.0f), ((float)IRQ_Current_BUFF.Current_M1/1000.0f), &d, &q);
 	dq0((float)angle*3.14159264f/180.0f, ((float)IRQ_Current_BUFF.Current_M3/1000.0f), ((float)IRQ_Current_BUFF.Current_M2/1000.0f), ((float)IRQ_Current_BUFF.Current_M1/1000.0f), &d, &q);
 
-	//1,2,3
-	//1,3,2
-	//2,1,3
-	//2,3,1
-	//3,1,2
-	//3,2,1 pls
-
-	//q = -q;
-	//d = -d;
-
 	//------------------calculate position setpoint----------------------
 	float ramp_angle = setpoint_ramp;
 	ramp_angle /= 60; //rounds per seconds
@@ -645,8 +603,6 @@ void run(){
 		}
 	}
 
-
-
 	//------------------calculate PID----------------------- 6.52us
 	Angle_PID.Input = ((float)IRQ_Encoders_BUFF.Encoder1_pos)/1000.0f + position_overflow*360.0f;// + storage->Encoder1_offset;
 	Velocity_PID.Input = IRQ_Encoders_BUFF.Velocity;
@@ -656,6 +612,11 @@ void run(){
 	if(Status == BLDC_STOPPED_WITH_BREAK){
 		Angle_PID.Setpoint == Angle_PID.Input;
 	}
+
+#ifdef LOOP_TIME_LED_DEBUG
+	HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 0);
+//	HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 1);
+#endif
 
 	float V_d = 0;
 	float V_q = 0;
@@ -737,8 +698,6 @@ void run(){
 
 	}
 
-
-
 	V_q = (V_q*1500.0f)/storage->VBAT;
 	V_d = (V_d*1500.0f)/storage->VBAT;
 
@@ -749,18 +708,10 @@ void run(){
 	mag *= 0.7;
 	if (mag > 1499)mag = 1499;
 
-	//uint32_t  mag = abs(V_q);
-
-	//-----------------
-//	V_q = (V_q*1500.0f)/VBAT;
-//	//V_d = (V_d*1500.0f)/VBAT;
-//	mag = V_q;
-//	theta = Current_PID_offset.Output;
-
 	//----------------error check---------------
 	uint32_t warning = 0;
-	check_value(&LIMIT_Current, (float)q, &warning, &error, 0);
-	check_value(&LIMIT_Current, (float)d, &warning, &error, 0);
+//	check_value(&LIMIT_Current, (float)q, &warning, &error, 0);
+//	check_value(&LIMIT_Current, (float)d, &warning, &error, 0);
 //	check_value(&LIMIT_Encoder_1, (float)IRQ_Encoders_BUFF.Encoder1_pos, &warning, &error, 1);
 //	check_value(&LIMIT_Encoder_2, (float)IRQ_Encoders_BUFF.Encoder2_pos, &warning, &error, 2);
 //	check_value(&LIMIT_Velocity, (float)IRQ_Encoders_BUFF.Velocity, &warning, &error, 3);
@@ -840,6 +791,8 @@ void run(){
 		}
 		if(IRQ_STATUS_BUFF.status == SYSTEM_RESET)NVIC_SystemReset();
 
+		if(IRQ_STATUS_BUFF.status == SET_CAN_ID)storage->CAN_ID = IRQ_STATUS_BUFF.setpoint;
+
 
 	}
 
@@ -873,10 +826,9 @@ void run(){
 			if(IRQ_STATUS_BUFF.status == SET_PID_CURRENT_Q_I)read_flash = storage->Current_ki;
 			if(IRQ_STATUS_BUFF.status == SET_PID_CURRENT_Q_D)read_flash = storage->Current_kd;
 
-	}
+			if(IRQ_STATUS_BUFF.status == SET_CAN_ID)read_flash = (float)storage->CAN_ID;
 
-	//--------------send can message------------------ 1us
-	//time keepers
+	}
 
 	running_LED_timing++;
 
@@ -905,11 +857,16 @@ void run(){
 		Feedback.Current_setpoint  = Current_PID.Setpoint; //TIM1->CCR1; //
 		Feedback.Velocity_setpoint = Velocity_PID.Setpoint; //TIM1->CCR2;//
 		Feedback.Position_setpoint = Angle_PID.Setpoint; //TIM1->CCR3; //
-		FDCAN_sendData(&hfdcan1, 0x42, (uint8_t*)&Feedback);
+		FDCAN_sendData(&hfdcan1, (storage->CAN_ID & 0x3F0) | 0x001, (uint8_t*)&Feedback);
 
 		//-----------------PRINTF DEBUGGING-------------------
 		//will print same info as on CAN-BUS
-
+#ifdef LOOP_TIME_LED_DEBUG
+	volatile uint8_t pin_stat = 1;
+	HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, pin_stat);
+	pin_stat = 0;
+	HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, pin_stat);
+#endif
 	}
 
 #endif
@@ -921,16 +878,11 @@ void run(){
 
 	if(current_can_data_index == 7){
 		current_can_data_index = 0;
-		FDCAN_sendData(&hfdcan1, 0x69, (uint8_t*)&current_can_data);
+		FDCAN_sendData(&hfdcan1, (storage->CAN_ID & 0x3F0) | 0x002, (uint8_t*)&current_can_data);
 	}
 	else current_can_data_index++;
 
 #endif
-	//----------------set status LEDs---------------------
-//	if(error)HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 1);
-//	else HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, 0);
-//	if(warning)HAL_GPIO_WritePin(WARNING_LED_GPIO_Port, WARNING_LED_Pin, 1);
-//	else HAL_GPIO_WritePin(WARNING_LED_GPIO_Port, WARNING_LED_Pin, 0);
 
 	#ifndef RUNNING_LED_DEBUG
 	if(running_LED_timing >= LOOP_FREQ_KHZ*100){

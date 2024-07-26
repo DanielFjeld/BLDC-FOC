@@ -1,5 +1,5 @@
 Application/Calibration.o: ../Application/Calibration.c \
- ../Application/calibration.h ../Application/CTRL.h ../Core/Inc/tim.h \
+ ../Application/Calibration.h ../Application/CTRL.h ../Core/Inc/tim.h \
  ../Core/Inc/main.h \
  C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal.h \
  ../Core/Inc/stm32g4xx_hal_conf.h \
@@ -41,8 +41,8 @@ Application/Calibration.o: ../Application/Calibration.c \
  C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart.h \
  C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart_ex.h \
  ../Application/Encoders_SPI.h ../Application/current_ADC.h \
- ../Application/print_server.h
-../Application/calibration.h:
+ ../Application/Print_server.h
+../Application/Calibration.h:
 ../Application/CTRL.h:
 ../Core/Inc/tim.h:
 ../Core/Inc/main.h:
@@ -87,4 +87,4 @@ C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HA
 C:/Users/Daniel/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.1/Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart_ex.h:
 ../Application/Encoders_SPI.h:
 ../Application/current_ADC.h:
-../Application/print_server.h:
+../Application/Print_server.h:

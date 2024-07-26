@@ -57,6 +57,7 @@
 		float MAX_POSITION;
 		float MAX_RAMP_RPM;
 
+		uint16_t CAN_ID;
 
 
 

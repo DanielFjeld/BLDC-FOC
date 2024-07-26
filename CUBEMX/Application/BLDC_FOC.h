@@ -159,6 +159,8 @@
 
 		PLAY_MUSIC,
 
+		SET_CAN_ID,
+
 
 
 	}BLDC_STATUS_INPUT_t;

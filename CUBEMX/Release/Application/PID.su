@@ -2,6 +2,6 @@
 ../Application/PID.c:35:6:SetTunings	0	static
 ../Application/PID.c:58:6:SetSampleTime	0	static
 ../Application/PID.c:70:6:SetOutputLimits	0	static
+../Application/PID.c:83:6:SetMode	0	static
 ../Application/PID.c:93:6:Initialize	0	static
-../Application/PID.c:83:6:SetMode	16	static
 ../Application/PID.c:101:6:SetControllerDirection	0	static

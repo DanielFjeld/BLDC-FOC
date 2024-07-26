@@ -13,7 +13,7 @@
 #define  PAGE_NUMBER 63 //max = 64
 #define PAGE_SIZE 2048 //2k
 
-#define ID_STRING "FLASH STORAGE ID\0"
+#define ID_STRING "FLASH STORAGE ID V0.0.1\0"
 
 const char ID[] =  {ID_STRING};
 
@@ -53,7 +53,9 @@ Flash RAM = {
 		.MAX_POSITION = 360.0*16.5f,    //degrees
 		.MAX_RAMP_RPM = 6000,
 
-		.calibrate_on_start = 0
+		.calibrate_on_start = 0,
+
+		.CAN_ID = 0x100
 };
 
 uint64_t test_data[2] = {0};
