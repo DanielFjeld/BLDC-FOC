@@ -151,7 +151,13 @@
 		SET_MAX_POSITION,
 		SET_MAX_RAMP_RPM,
 
-		
+		FLASH_RESET_TO_RAM,
+
+
+		ENABLE_CONFIG,
+		DISABLE_CONFIG,
+
+		PLAY_MUSIC,
 
 
 
@@ -170,6 +176,8 @@
 		BLDC_RUNNING,
 		BLDC_ERROR,
 		BLDC_MIN_MAX_POSITION,
+		BLDC_CONFIG,
+		BLDC_PLAYING_MUSIC,
 
 		//set limits
 		BLDC_SET_LIMIT_Q_CURRENT,
@@ -220,6 +228,7 @@
 		//start calibration
 		BLDC_START_ENCODER_CALIBRATION,
 		BLDC_START_MAX_MIN_POSITION_CALIBRATION,
+
 
 		//reset flash (need to redo calibration before start)
 		

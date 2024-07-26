@@ -53,7 +53,7 @@ Flash RAM = {
 		.MAX_POSITION = 360.0*16.5f,    //degrees
 		.MAX_RAMP_RPM = 6000,
 
-		.calibrate_on_start = 1
+		.calibrate_on_start = 0
 };
 
 uint64_t test_data[2] = {0};

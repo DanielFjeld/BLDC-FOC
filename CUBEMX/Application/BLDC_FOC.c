@@ -30,7 +30,7 @@
  *
  *  CAN control:
  * 3. initialize calibration(s)
- *   - encoder calibration
+ *   OK - encoder calibration
  *   - order phases (direction)
  *   - find M1, M2, M3 (not implemented yet)
  *   - position limits (duplicate ticket)
@@ -196,6 +196,9 @@ float Update_FIR_filter2(float input){
 	else FIR_index2 = 0;
 	return FIR2_value;
 }
+float music_voltage = 0;
+float music_count = 0;
+float MusicPhase = 0.0;  // Phase of the sine wave, persists between function calls
 
 //----------------------CAN--------------------
 CAN_Status IRQ_Status;
@@ -353,7 +356,6 @@ uint32_t last_pos_enc = 0;
 
 int32_t position_overflow = 0;
 
-
 Flash *storage;
 
 #define PID_TIMING 10
@@ -449,7 +451,7 @@ void BLDC_main(void){
 	if(storage->calibrate_on_start)Status = BLDC_CALIBRATING_ENCODER;
 
 	while(1){
-		flash_check();
+		//flash_check();
 		if (Status == BLDC_CALIBRATING_ENCODER){
 			//HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
 			order_phases(&IRQ_Encoders, &IRQ_Current);
@@ -586,6 +588,10 @@ void run(){
 		SetMode(&Current_PID,  AUTOMATIC);
 		SetMode(&Angle_PID,  AUTOMATIC);
 	}
+	else if(Status == BLDC_STOPPED_WITH_BREAK && IRQ_STATUS_BUFF.status == ENABLE_CONFIG)Status = BLDC_CONFIG;
+	else if(Status == BLDC_CONFIG && IRQ_STATUS_BUFF.status == INPUT_STOP_WITH_BREAK)Status = BLDC_STOPPED_WITH_BREAK;
+	else if(Status == BLDC_STOPPED_WITH_BREAK && IRQ_STATUS_BUFF.status == PLAY_MUSIC)Status = BLDC_PLAYING_MUSIC;
+	else if(Status == BLDC_PLAYING_MUSIC && IRQ_STATUS_BUFF.status == INPUT_STOP_WITH_BREAK)Status = BLDC_STOPPED_WITH_BREAK;
 
 	//----------------------position-----------------
 	if (last_pos_enc > 270000 && IRQ_Encoders_BUFF.Encoder1_pos < 90000)position_overflow++;
@@ -640,11 +646,16 @@ void run(){
 	}
 
 
+
 	//------------------calculate PID----------------------- 6.52us
 	Angle_PID.Input = ((float)IRQ_Encoders_BUFF.Encoder1_pos)/1000.0f + position_overflow*360.0f;// + storage->Encoder1_offset;
 	Velocity_PID.Input = IRQ_Encoders_BUFF.Velocity;
 	Current_PID.Input = q;
 	Current_PID_offset.Input = d;
+
+	if(Status == BLDC_STOPPED_WITH_BREAK){
+		Angle_PID.Setpoint == Angle_PID.Input;
+	}
 
 	float V_d = 0;
 	float V_q = 0;
@@ -696,6 +707,35 @@ void run(){
 		V_d = Current_PID_offset.Output;
 		V_q = Current_PID.Output;
 	}
+	else if(Status == BLDC_PLAYING_MUSIC){
+		float frequency = IRQ_STATUS_BUFF.setpoint;
+		float output = 0;
+		if (frequency < 10.0 || frequency > 5000.0) {
+			output = 0.0;  // Return 0 if frequency is out of the allowed range
+		}
+		else{
+			// Calculate the phase increment per sample
+			float phaseIncrement = 2.0 * M_PI * frequency / 10000;
+
+			// Update the phase
+			MusicPhase += phaseIncrement;
+			if (MusicPhase > 2.0 * M_PI) {
+				MusicPhase -= 2.0 * M_PI;  // Keep the phase within 0 to 2*PI
+			}
+
+			// Calculate the sine wave value
+			output = sinf(MusicPhase);
+
+			// Scale the output to fit the voltage range
+			float output_voltage = IRQ_STATUS_BUFF.ramp;
+			if (output_voltage < 0.0 || output_voltage > 10.0)output_voltage = 0;
+			output = output * output_voltage;
+		}
+
+		V_d = 0;
+		V_q = output;
+
+	}
 
 
 
@@ -731,6 +771,7 @@ void run(){
 
 	//-----------------set PWM--------------------
 	error = 0;
+	float read_flash = NAN;
 	//if(HAL_GetTick() > 10000)error = 1;
 	if(error){
 		Status = BLDC_ERROR;
@@ -751,31 +792,89 @@ void run(){
 	else if (Status == BLDC_RUNNING || Status == BLDC_MIN_MAX_POSITION){
 		inverter(angle + (int32_t)theta + 360*2, mag, PHASE_ORDER);
 		}
+	else if (Status == BLDC_PLAYING_MUSIC){
+		inverter(angle + (int32_t)theta + 360*2, mag, PHASE_ORDER);
+	}
 
 
-	if(Status != BLDC_RUNNING){
+	if(Status != BLDC_RUNNING && Status == BLDC_CONFIG && !isnan(IRQ_STATUS_BUFF.setpoint)){
 		if(IRQ_STATUS_BUFF.status == SET_LED)HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, IRQ_STATUS_BUFF.setpoint);
-		if(IRQ_STATUS_BUFF.status == START_ENCODER_CALIBRATION_ON_START)storage->calibrate_on_start = 1;
+		if(IRQ_STATUS_BUFF.status == START_ENCODER_CALIBRATION_ON_START)storage->calibrate_on_start = (uint8_t)IRQ_STATUS_BUFF.setpoint;
 
 		if(IRQ_STATUS_BUFF.status == SET_VBAT)storage->VBAT = IRQ_STATUS_BUFF.setpoint;           //volt
 		if(IRQ_STATUS_BUFF.status == SET_MAX_VOLTAGE)storage->MAX_VOLTAGE = IRQ_STATUS_BUFF.setpoint;       //volt
 		if(IRQ_STATUS_BUFF.status == SET_MAX_CURRENT)storage->MAX_CURRENT = IRQ_STATUS_BUFF.setpoint; //16.0f      //amp
 		if(IRQ_STATUS_BUFF.status == SET_MAX_VELOCITY)storage->MAX_VELOCITY = IRQ_STATUS_BUFF.setpoint;   //RPM
+
+
 		if(IRQ_STATUS_BUFF.status == SET_MIN_POSITION)storage->MIN_POSITION = IRQ_STATUS_BUFF.setpoint;     //degrees
 		if(IRQ_STATUS_BUFF.status == SET_MAX_POSITION)storage->MAX_POSITION = IRQ_STATUS_BUFF.setpoint;    //degrees
 		if(IRQ_STATUS_BUFF.status == SET_MAX_RAMP_RPM)storage->MAX_RAMP_RPM = IRQ_STATUS_BUFF.setpoint;
 
+		if(IRQ_STATUS_BUFF.status == SET_PID_ANGLE_P)storage->Angle_kp = IRQ_STATUS_BUFF.setpoint;
+		if(IRQ_STATUS_BUFF.status == SET_PID_ANGLE_I)storage->Angle_ki = IRQ_STATUS_BUFF.setpoint;
+		if(IRQ_STATUS_BUFF.status == SET_PID_ANGLE_D)storage->Angle_kd = IRQ_STATUS_BUFF.setpoint;
+
+		if(IRQ_STATUS_BUFF.status == SET_PID_VELOCITY_P)storage->Velocity_kp = IRQ_STATUS_BUFF.setpoint;
+		if(IRQ_STATUS_BUFF.status == SET_PID_VELOCITY_I)storage->Velocity_ki= IRQ_STATUS_BUFF.setpoint;
+		if(IRQ_STATUS_BUFF.status == SET_PID_VELOCITY_D)storage->Velocity_kd = IRQ_STATUS_BUFF.setpoint;
+
+		if(IRQ_STATUS_BUFF.status == SET_PID_CURRENT_D_P)storage->Current_offset_kp = IRQ_STATUS_BUFF.setpoint;
+		if(IRQ_STATUS_BUFF.status == SET_PID_CURRENT_D_I)storage->Current_offset_ki = IRQ_STATUS_BUFF.setpoint;
+		if(IRQ_STATUS_BUFF.status == SET_PID_CURRENT_D_D)storage->Current_offset_kp = IRQ_STATUS_BUFF.setpoint;
+
+		if(IRQ_STATUS_BUFF.status == SET_PID_CURRENT_Q_P)storage->Current_kp = IRQ_STATUS_BUFF.setpoint;
+		if(IRQ_STATUS_BUFF.status == SET_PID_CURRENT_Q_I)storage->Current_ki = IRQ_STATUS_BUFF.setpoint;
+		if(IRQ_STATUS_BUFF.status == SET_PID_CURRENT_Q_D)storage->Current_kd = IRQ_STATUS_BUFF.setpoint;
 
 
-
+		if(IRQ_STATUS_BUFF.status == FLASH_RESET_TO_RAM){
+			Flash_init(0); //save flash with RAM values
+			IRQ_STATUS_BUFF.status = BLDC_STOPPED_WITH_BREAK;
+			IRQ_Status.status = BLDC_STOPPED_WITH_BREAK;
+		}
 		if(IRQ_STATUS_BUFF.status == SAVE_FLASH){
 			Flash_save();
 			IRQ_STATUS_BUFF.status = BLDC_STOPPED_WITH_BREAK;
 			IRQ_Status.status = BLDC_STOPPED_WITH_BREAK;
-
 		}
 		if(IRQ_STATUS_BUFF.status == SYSTEM_RESET)NVIC_SystemReset();
+
+
 	}
+
+	else if (Status == BLDC_STOPPED_WITH_BREAK){
+
+			if(IRQ_STATUS_BUFF.status == START_ENCODER_CALIBRATION_ON_START)read_flash = (float)storage->calibrate_on_start;
+
+			if(IRQ_STATUS_BUFF.status == SET_VBAT)read_flash = storage->VBAT;           //volt
+			if(IRQ_STATUS_BUFF.status == SET_MAX_VOLTAGE)read_flash = storage->MAX_VOLTAGE;       //volt
+			if(IRQ_STATUS_BUFF.status == SET_MAX_CURRENT)read_flash = storage->MAX_CURRENT; //16.0f      //amp
+			if(IRQ_STATUS_BUFF.status == SET_MAX_VELOCITY)read_flash = storage->MAX_VELOCITY;   //RPM
+
+
+			if(IRQ_STATUS_BUFF.status == SET_MIN_POSITION)read_flash = storage->MIN_POSITION ;     //degrees
+			if(IRQ_STATUS_BUFF.status == SET_MAX_POSITION)read_flash = storage->MAX_POSITION ;    //degrees
+			if(IRQ_STATUS_BUFF.status == SET_MAX_RAMP_RPM)read_flash = storage->MAX_RAMP_RPM;
+
+			if(IRQ_STATUS_BUFF.status == SET_PID_ANGLE_P)read_flash = storage->Angle_kp;
+			if(IRQ_STATUS_BUFF.status == SET_PID_ANGLE_I)read_flash = storage->Angle_ki;
+			if(IRQ_STATUS_BUFF.status == SET_PID_ANGLE_D)read_flash = storage->Angle_kd;
+
+			if(IRQ_STATUS_BUFF.status == SET_PID_VELOCITY_P)read_flash = storage->Velocity_kp;
+			if(IRQ_STATUS_BUFF.status == SET_PID_VELOCITY_I)read_flash = storage->Velocity_ki;
+			if(IRQ_STATUS_BUFF.status == SET_PID_VELOCITY_D)read_flash = storage->Velocity_kd;
+
+			if(IRQ_STATUS_BUFF.status == SET_PID_CURRENT_D_P)read_flash = storage->Current_offset_kp;
+			if(IRQ_STATUS_BUFF.status == SET_PID_CURRENT_D_I)read_flash = storage->Current_offset_ki;
+			if(IRQ_STATUS_BUFF.status == SET_PID_CURRENT_D_D)read_flash = storage->Current_offset_kd;
+
+			if(IRQ_STATUS_BUFF.status == SET_PID_CURRENT_Q_P)read_flash = storage->Current_kp;
+			if(IRQ_STATUS_BUFF.status == SET_PID_CURRENT_Q_I)read_flash = storage->Current_ki;
+			if(IRQ_STATUS_BUFF.status == SET_PID_CURRENT_Q_D)read_flash = storage->Current_kd;
+
+	}
+
 	//--------------send can message------------------ 1us
 	//time keepers
 
@@ -786,19 +885,21 @@ void run(){
 	if(timing_CAN_feedback >= LOOP_FREQ_KHZ*1){ //every 5ms
 		timing_CAN_feedback = 0;
 		Feedback.Status_warning = warning;
-		Feedback.Status_faults = error;
-		Feedback.Status_setpoint = IRQ_STATUS_BUFF.setpoint;
+		Feedback.Status_faults = IRQ_STATUS_BUFF.status;
+		if(!isnan(read_flash))Feedback.Status_setpoint = read_flash;
+		else Feedback.Status_setpoint = IRQ_STATUS_BUFF.setpoint;
+
 		Feedback.Status_mode = Status;
 
-		Feedback.Current_Q = IRQ_Current_BUFF.Current_M1;
-		Feedback.Current_D = step_test;
+		Feedback.Current_Q = q;
+		Feedback.Current_D = d;
 
 		Feedback.Voltage_magnitude = mag;
 		Feedback.Voltage_theta = theta;
 
 		Feedback.Position_Encoder1_pos = (float)IRQ_Encoders_BUFF.Encoder1_pos/1000.0f;
 		Feedback.Position_Encoder2_pos = (float)IRQ_Encoders_BUFF.Encoder2_pos/1000.0f;
-		Feedback.Position_Calculated_pos = Angle_PID.Input;
+		Feedback.Position_Calculated_pos = Angle_PID.Input - MIN_POS;
 		Feedback.Position_Velocity = IRQ_Encoders_BUFF.Velocity;
 
 		Feedback.Current_setpoint  = Current_PID.Setpoint; //TIM1->CCR1; //
