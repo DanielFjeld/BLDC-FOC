@@ -43,11 +43,6 @@
 		float Current_Q;
 		float Current_D;
 
-		//int16_t Temp_ENCODER1;
-		//int16_t Temp_ENCODER2;
-
-
-
 		float Voltage_magnitude;
 		float Voltage_theta;
 

@@ -91,7 +91,7 @@
 #include "Calibration.h"
 
 //-----------------------------------
-#define LOOP_TIME_LED_DEBUG
+//#define LOOP_TIME_LED_DEBUG
 //      SETUP
 
 //-----------------------------
@@ -385,35 +385,21 @@ void BLDC_main(void){
 
 	Angle_PID.Setpoint = 0;
 
-
 	//setup current
-	//HAL_Delay(3000);
 	current_init((void*)&Current_IRQ);
 	HAL_Delay(1000);
+
 	//setup encoder
-
-
 	uint32_t max_duty_cycle = 1499;
 	CTRL_init_PWM(&max_duty_cycle);
-
-//#ifdef CALIBRATE_ON_STARTUP
-//	ORBIS_init((void*)&Encoders_IRQ, 1);
-//#else
-//	ORBIS_init((void*)&Encoders_IRQ, 0);
-//#endif
 
 	if(storage->calibrate_on_start)ORBIS_init((void*)&Encoders_IRQ, 1);
 	else ORBIS_init((void*)&Encoders_IRQ, 0);
 
-
 	HAL_TIM_Base_Start_IT(&htim3);
-	//setup voltage and temperature readings
 	voltage_temperature_init((void*)&Voltage_Temp_IRQ);
-	//setup CAN
 	//-----------------CAN----------------------
 	FDCAN_addCallback(&hfdcan1, (storage->CAN_ID & 0x3F0), (void*)&Can_RX_Status_IRQ);
-//	FDCAN_addCallback(&hfdcan1, (CAN_PID_ID << 8) 	| (CAN_DEVICE_ID << 4) | (CAN_BLDC_ID << 0), (void*)&Can_RX_PID_IRQ);
-
 	FDCAN_Start(&hfdcan1);
 
 

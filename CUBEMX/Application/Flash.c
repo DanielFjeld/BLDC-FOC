@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include "string.h"
 
-#define  PAGE_NUMBER 63 //max = 64
+#define  PAGE_NUMBER 62 //max = 64
 #define PAGE_SIZE 2048 //2k
 
 #define ID_STRING "FLASH STORAGE ID V0.0.1\0"
