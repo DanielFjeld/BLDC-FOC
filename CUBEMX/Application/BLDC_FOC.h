@@ -32,7 +32,7 @@
 	typedef struct CAN_Feedback{ //64Byte data
 		uint32_t Status_mode;
 		uint32_t Status_warning;
-		uint32_t Status_faults;
+		uint32_t Status_status;
 		float  Status_setpoint;
 
 		float Position_Encoder1_pos; 	//0 to 360 000

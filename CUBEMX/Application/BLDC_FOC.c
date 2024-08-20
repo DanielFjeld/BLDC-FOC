@@ -820,10 +820,10 @@ void run(){
 
 #ifdef SEND_CAN_DATA
 	timing_CAN_feedback++;
-	if(timing_CAN_feedback >= LOOP_FREQ_KHZ*1){ //every 5ms
+	if(timing_CAN_feedback >= LOOP_FREQ_KHZ*1){ //every 1ms
 		timing_CAN_feedback = 0;
 		Feedback.Status_warning = warning;
-		Feedback.Status_faults = IRQ_STATUS_BUFF.status;
+		Feedback.Status_status = IRQ_STATUS_BUFF.status;
 		if(!isnan(read_flash))Feedback.Status_setpoint = read_flash;
 		else Feedback.Status_setpoint = IRQ_STATUS_BUFF.setpoint;
 

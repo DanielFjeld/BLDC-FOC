@@ -8,5 +8,5 @@
 ../Application/BLDC_FOC.c:286:10:sqrtI	0	static
 ../Application/BLDC_FOC.c:305:7:atan2_approximation2	0	static
 ../Application/BLDC_FOC.c:349:6:BLDC_main	56	static
-../Application/BLDC_FOC.c:497:6:run	80	static,ignoring_inline_asm
-../Application/BLDC_FOC.c:900:9:mech_to_el_deg	0	static
+../Application/BLDC_FOC.c:483:6:run	72	static,ignoring_inline_asm
+../Application/BLDC_FOC.c:886:9:mech_to_el_deg	0	static
