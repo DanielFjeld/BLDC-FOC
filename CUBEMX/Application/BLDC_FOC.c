@@ -398,8 +398,16 @@ void BLDC_main(void){
 
 	HAL_TIM_Base_Start_IT(&htim3);
 	voltage_temperature_init((void*)&Voltage_Temp_IRQ);
+
+	//set CAN_ID if not equal to presets
+	if(storage->CAN_ID == 0x10);
+	else if(storage->CAN_ID == 0x20);
+	else if(storage->CAN_ID == 0x30);
+	else if(storage->CAN_ID == 0x40);
+	else storage->CAN_ID = 0x00;
+
 	//-----------------CAN----------------------
-	FDCAN_addCallback(&hfdcan1, (storage->CAN_ID & 0x3F0), (void*)&Can_RX_Status_IRQ);
+	FDCAN_addCallback(&hfdcan1, storage->CAN_ID, (void*)&Can_RX_Status_IRQ);
 	FDCAN_Start(&hfdcan1);
 
 
@@ -491,6 +499,14 @@ void run(){
 	memcpy(&IRQ_Voltage_Temp_BUFF, &IRQ_Voltage_Temp, sizeof(Voltage_Temp));
 	memcpy(&IRQ_Encoders_BUFF, &IRQ_Encoders, sizeof(Encoders));
 	memcpy(&IRQ_STATUS_BUFF, &IRQ_Status, sizeof(CAN_Status));
+
+
+	//set CAN_ID if not equal to presets
+	if(storage->CAN_ID == 0x10);
+	else if(storage->CAN_ID == 0x20);
+	else if(storage->CAN_ID == 0x30);
+	else if(storage->CAN_ID == 0x40);
+	else storage->CAN_ID = 0x00;
 
 #ifndef CAN_CTRL
 	temp_time_voltage_switching++;
@@ -726,16 +742,16 @@ void run(){
 		Current_PID_offset.outputSum = 0;
 		Angle_PID.outputSum = 0;
 	}
-	else if (Status == BLDC_RUNNING || Status == BLDC_MIN_MAX_POSITION){
-		inverter(angle + (int32_t)theta + 360*2, mag, PHASE_ORDER);
+	else if (Status == BLDC_RUNNING || Status == BLDC_MIN_MAX_POSITION || Status == BLDC_PLAYING_MUSIC){
+		if(PHASE_ORDER) //Only start motor if the direction is correct
+			inverter(angle + (int32_t)theta + 360*2, mag, PHASE_ORDER);
+		else
+			shutoff();
 		}
-	else if (Status == BLDC_PLAYING_MUSIC){
-		inverter(angle + (int32_t)theta + 360*2, mag, PHASE_ORDER);
-	}
-
+	if(IRQ_STATUS_BUFF.status == SET_LED)HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, IRQ_STATUS_BUFF.setpoint);
 
 	if(Status != BLDC_RUNNING && Status == BLDC_CONFIG && !isnan(IRQ_STATUS_BUFF.setpoint)){
-		if(IRQ_STATUS_BUFF.status == SET_LED)HAL_GPIO_WritePin(ERROR_LED_GPIO_Port, ERROR_LED_Pin, IRQ_STATUS_BUFF.setpoint);
+
 		if(IRQ_STATUS_BUFF.status == START_ENCODER_CALIBRATION_ON_START)storage->calibrate_on_start = (uint8_t)IRQ_STATUS_BUFF.setpoint;
 
 		if(IRQ_STATUS_BUFF.status == SET_VBAT)storage->VBAT = IRQ_STATUS_BUFF.setpoint;           //volt
@@ -764,31 +780,36 @@ void run(){
 		if(IRQ_STATUS_BUFF.status == SET_PID_CURRENT_Q_I)storage->Current_ki = IRQ_STATUS_BUFF.setpoint;
 		if(IRQ_STATUS_BUFF.status == SET_PID_CURRENT_Q_D)storage->Current_kd = IRQ_STATUS_BUFF.setpoint;
 
-
 		if(IRQ_STATUS_BUFF.status == FLASH_RESET_TO_RAM){
 			Flash_init(0); //save flash with RAM values
-			IRQ_STATUS_BUFF.status = BLDC_STOPPED_WITH_BREAK;
+			IRQ_STATUS_BUFF.status = INPUT_STOP_WITH_BREAK;
 			IRQ_Status.status = BLDC_STOPPED_WITH_BREAK;
 		}
 		if(IRQ_STATUS_BUFF.status == SAVE_FLASH){
 			Flash_save();
-			IRQ_STATUS_BUFF.status = BLDC_STOPPED_WITH_BREAK;
+			IRQ_STATUS_BUFF.status = INPUT_STOP_WITH_BREAK;
 			IRQ_Status.status = BLDC_STOPPED_WITH_BREAK;
 		}
 		if(IRQ_STATUS_BUFF.status == SYSTEM_RESET)NVIC_SystemReset();
 
-		if(IRQ_STATUS_BUFF.status == SET_CAN_ID)storage->CAN_ID = IRQ_STATUS_BUFF.setpoint;
 
+		if(IRQ_STATUS_BUFF.status == SET_CAN_ID){
+			if((uint16_t)IRQ_STATUS_BUFF.setpoint == 1)		storage->CAN_ID = 0x010;
+			else if((uint16_t)IRQ_STATUS_BUFF.setpoint == 2)storage->CAN_ID = 0x020;
+			else if((uint16_t)IRQ_STATUS_BUFF.setpoint == 3)storage->CAN_ID = 0x030;
+			else if((uint16_t)IRQ_STATUS_BUFF.setpoint == 4)storage->CAN_ID = 0x040;
+			else 											storage->CAN_ID = 0x000;
 
+		}
 	}
 
 	else if (Status == BLDC_STOPPED_WITH_BREAK){
 
 			if(IRQ_STATUS_BUFF.status == START_ENCODER_CALIBRATION_ON_START)read_flash = (float)storage->calibrate_on_start;
 
-			if(IRQ_STATUS_BUFF.status == SET_VBAT)read_flash = storage->VBAT;           //volt
-			if(IRQ_STATUS_BUFF.status == SET_MAX_VOLTAGE)read_flash = storage->MAX_VOLTAGE;       //volt
-			if(IRQ_STATUS_BUFF.status == SET_MAX_CURRENT)read_flash = storage->MAX_CURRENT; //16.0f      //amp
+			if(IRQ_STATUS_BUFF.status == SET_VBAT)read_flash = storage->VBAT;           		//volt
+			if(IRQ_STATUS_BUFF.status == SET_MAX_VOLTAGE)read_flash = storage->MAX_VOLTAGE;  	//volt
+			if(IRQ_STATUS_BUFF.status == SET_MAX_CURRENT)read_flash = storage->MAX_CURRENT; 	//16.0f      //amp
 			if(IRQ_STATUS_BUFF.status == SET_MAX_VELOCITY)read_flash = storage->MAX_VELOCITY;   //RPM
 
 
@@ -820,7 +841,7 @@ void run(){
 
 #ifdef SEND_CAN_DATA
 	timing_CAN_feedback++;
-	if(timing_CAN_feedback >= LOOP_FREQ_KHZ*1){ //every 1ms
+	if(timing_CAN_feedback >= LOOP_FREQ_KHZ*2){ //every 2ms
 		timing_CAN_feedback = 0;
 		Feedback.Status_warning = warning;
 		Feedback.Status_status = IRQ_STATUS_BUFF.status;

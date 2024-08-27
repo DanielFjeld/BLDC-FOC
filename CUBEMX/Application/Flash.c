@@ -47,7 +47,7 @@ Flash RAM = {
 
 		.VBAT = 22.0f,           //volt
 		.MAX_VOLTAGE = 22.0f,       //volt
-		.MAX_CURRENT = 5.0f, //16.0f      //amp
+		.MAX_CURRENT = 16.0f, //16.0f      //amp
 		.MAX_VELOCITY = 6000.0f,   //RPM
 		.MIN_POSITION = 0.0f,      //degrees
 		.MAX_POSITION = 360.0*16.5f,    //degrees
