@@ -205,7 +205,6 @@ void Current_IRQ(Current* ptr){
 	#ifdef RUNNING_LED_DEBUG2
 	HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
 	#endif
-	//ptr->Current_M1 = 30000;
 
     if(ptr != NULL)memcpy(&IRQ_Current, ptr, sizeof(Current));
     else return;
@@ -434,7 +433,6 @@ void BLDC_main(void){
 	while(1){
 		//flash_check();
 		if (Status == BLDC_CALIBRATING_ENCODER){
-			//HAL_GPIO_WritePin(RUNNING_LED_GPIO_Port, RUNNING_LED_Pin, 1);
 			order_phases(&IRQ_Encoders, &IRQ_Current);
 			calibrate(&IRQ_Encoders, &IRQ_Current);
 
@@ -612,7 +610,7 @@ void run(){
 	Current_PID_offset.Input = d;
 
 	if(Status == BLDC_STOPPED_WITH_BREAK){
-		Angle_PID.Setpoint == Angle_PID.Input;
+		Angle_PID.Setpoint = Angle_PID.Input;
 	}
 
 #ifdef LOOP_TIME_LED_DEBUG
@@ -841,7 +839,7 @@ void run(){
 
 #ifdef SEND_CAN_DATA
 	timing_CAN_feedback++;
-	if(timing_CAN_feedback >= LOOP_FREQ_KHZ*2){ //every 2ms
+	if(timing_CAN_feedback >= LOOP_FREQ_KHZ * 10){ //every 10 ms
 		timing_CAN_feedback = 0;
 		Feedback.Status_warning = warning;
 		Feedback.Status_status = IRQ_STATUS_BUFF.status;

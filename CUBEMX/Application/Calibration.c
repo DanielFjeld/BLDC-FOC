@@ -156,104 +156,22 @@ void calibrate(Encoders *ps, Current *cs){ //, PositionSensor *ps, GPIOStruct *g
     /// and (in the future) corrects nonlinearity due to position sensor eccentricity
 	PrintServerPrintf("Starting calibration procedure\n\r");
 
-   const int n = SIZE*NPP;                                                      // number of positions to be sampled per mechanical rotation.  Multiple of NPP for filtering reasons (see later)
-   const int n2 = 40;                                                          // increments between saved samples (for smoothing motion)
-   float delta = 360.0f*NPP/(n*n2);                                              // change in angle between samples
-   const int  n_lut =  SIZE*NPP;
-   const int window = WINDOW_SIZE;
-   float cogging_current[WINDOW_SIZE] = {0};
+	float theta_ref = 0;
 
-
-   float theta_ref = 0;
-   float theta_ref_last = 0;
-   int8_t theta_ref_count = 0;
-
-   float theta_actual = 0;
-   float theta_actual_last = 0;
-   int8_t theta_actual_count = 0;
-
-   float d;
-   float q;
-
-
-    float error_f[n];
-    float error_b[n];
-    int lut[n];
-    int raw_f[n];
-    int raw_b[n];
-    float error[n];
-//    float error_filt[SIZE*NPP] = {0};
-
-    //ps->WriteLUT(lut);
+	float d;
+	float q;
 
     ///Set voltage angle to zero, wait for rotor position to settle
     inverter((int16_t)theta_ref, CAL_DUTY, PHASE_ORDER);
     HAL_Delay(1000);
 
     dq0(theta_ref*pi/180, (float)cs->Current_M1/1000, (float)cs->Current_M2/1000, (float)cs->Current_M3/1000, &d, &q);
-    float current = sqrt((d*d + q*q));
-    PrintServerPrintf("Current Angle : Rotor Angle : Raw Encoder \n\r\n\r");
-#ifndef NEW_CAL
-    for(int i = 0; i<n; i++){                                                   // rotate forwards
-       for(int j = 0; j<n2; j++){
-        theta_ref += delta;
-        inverter((int16_t)theta_ref, CAL_DUTY, PHASE_ORDER);
-        HAL_Delay(3);
-       theta_actual = (float)ps->Encoder1_pos/1000; //fixed position
-       if(!i)theta_actual_last=theta_actual;
-
-       if(theta_actual-theta_actual_last < -90) theta_actual_count--;
-       if(theta_actual-theta_actual_last > 90) theta_actual_count++;
-       theta_actual_last = theta_actual;
-
-       //aa_test_3 = theta_ref/NPP;
-       aa_test_4 = theta_actual+theta_actual_count*360;
-       error_temp = (theta_ref/NPP - theta_actual+theta_actual_count*360);
-       error_f[i] = error_temp;
-       raw_f[i] = ps->Encoder1_pos_raw; //raw position
-       PrintServerPrintf("%.4f %.4f%d\n\r", theta_ref/(NPP), theta_actual, raw_f[i]);
-        }
-    }
-
-    for(int i = 0; i<n; i++){                                                   // rotate backwards
-       for(int j = 0; j<n2; j++){
-       theta_ref -= delta;
-       inverter((int16_t)theta_ref, CAL_DUTY, PHASE_ORDER);
-       HAL_Delay(3);                                                         // sample position sensor
-       theta_actual = (float)ps->Encoder1_pos/1000;
-
-       if(theta_actual-theta_actual_last < -90) theta_actual_count--;
-	   if(theta_actual-theta_actual_last > 90) theta_actual_count++;
-	   theta_actual_last = theta_actual;
-
-	   aa_test_4 = theta_actual+theta_actual_count*360;
-	   error_temp = (theta_ref/NPP - theta_actual+theta_actual_count*360);
-       error_b[i] = error_temp;
-
-       aa_test_3 = 0.5f*(error_b[i] + error_f[n-i-1]);
-
-       raw_b[i] =  ps->Encoder1_pos_raw;
-       PrintServerPrintf("%.4f %.4f %d\n\r", theta_ref/(NPP), theta_actual, raw_b[i]);
-       //theta_ref -= delta;
-        }
-    }
-    electrical_offset = 0;
-            for(int i = 0; i<n; i++){
-            	electrical_offset += (error_f[i] + error_b[n-1-i])/(2.0f*n);                   // calclate average position sensor offset
-                }
-            electrical_offset = fmod(electrical_offset*NPP, 360);                                        // convert mechanical angle to electrical angle
-
-            for (int i = 0; i<n; i++){
-            	error_filt[i] = 0.5f*(error_f[i] + error_b[n-i-1]);
-            }
-#else                                                  // rotate forwards
+    PrintServerPrintf("Current Angle : Rotor Angle : Raw Encoder \n\r\n\r");                                                 // rotate forwards
 
 	inverter(0, CAL_DUTY, PHASE_ORDER);
 	HAL_Delay(1000);
 	error_filt[0] = -(float)ps->Encoder1_pos/1000; //fixed position
 
-
-#endif
         PrintServerPrintf("\n\rEncoder Electrical Offset (deg) %f\n\r",  electrical_offset);
     }
 

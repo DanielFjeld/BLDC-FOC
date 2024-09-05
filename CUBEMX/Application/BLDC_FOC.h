@@ -244,13 +244,13 @@
 		LIMIT_ENCODER_2,
 	}LIMIT_CHECK_t;
 
-	static char status_sting[5][26] = {
-			"  BLDC STOPPED WITH BREAK\0",
-			"BLDC STOPPED AND SHUTDOWN\0",
-			" BLDC CALIBRATING ENCODER\0",
-			"             BLDC RUNNING\0",
-			"               BLDC ERROR\0"
-	};
+//	static char status_sting[5][26] = {
+//			"  BLDC STOPPED WITH BREAK\0",
+//			"BLDC STOPPED AND SHUTDOWN\0",
+//			" BLDC CALIBRATING ENCODER\0",
+//			"             BLDC RUNNING\0",
+//			"               BLDC ERROR\0"
+//	};
 
 	void BLDC_main(void);
 	void run();

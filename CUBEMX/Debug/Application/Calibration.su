@@ -1,4 +1,4 @@
 ../Application/Calibration.c:82:6:order_phases	88	static
 ../Application/Calibration.c:141:6:smoothArray	32	static
-../Application/Calibration.c:154:6:calibrate	288	dynamic
-../Application/Calibration.c:260:6:rotate_inverter	24	static
+../Application/Calibration.c:154:6:calibrate	32	static
+../Application/Calibration.c:178:6:rotate_inverter	24	static

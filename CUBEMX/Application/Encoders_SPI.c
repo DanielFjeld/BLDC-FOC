@@ -136,15 +136,8 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi)
 
 		if(last_pos_dt < 0)last_pos_dt = temp_Encoder1_pos; //startup
 
-		int32_t last_pos_dt_check = temp_Encoder1_pos-last_pos_dt;
 		if(temp_Encoder1_pos > 0){
 			last_pos_dt = temp_Encoder1_pos;}
-		else{
-			uint8_t hei = 0;
-		}
-		if(temp_Encoder1_pos > 360000 || temp_Encoder1_pos < 0){
-			uint8_t hei = 0;
-		}
 
 		data_encoders.Encoder1_pos = last_pos_dt;
 		aaa_test_pos_delete1 = last_pos_dt;
